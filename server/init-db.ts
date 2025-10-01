@@ -69,6 +69,20 @@ export function initDatabase() {
     console.error('Error during migration:', error);
   }
   
+  // Migration: Add inventoried_quantity column to order_lines if it doesn't exist
+  try {
+    const columns = sqlite.pragma('table_info(order_lines)') as Array<{ name: string }>;
+    const hasInventoriedQuantityColumn = columns.some((col) => col.name === 'inventoried_quantity');
+    
+    if (!hasInventoriedQuantityColumn) {
+      console.log('Adding inventoried_quantity column to order_lines table...');
+      sqlite.exec('ALTER TABLE order_lines ADD COLUMN inventoried_quantity INTEGER;');
+      console.log('Inventoried quantity column added successfully!');
+    }
+  } catch (error) {
+    console.error('Error during migration:', error);
+  }
+  
   sqlite.close();
   console.log('Database initialized successfully!');
 }
