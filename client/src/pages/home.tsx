@@ -116,7 +116,7 @@ export default function Home({ user, onLogout }: HomeProps) {
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === "inventory" && <InventoryTab userId={user.id} />}
         {activeTab === "orders" && <OrdersTab userId={user.id} />}
-        {activeTab === "admin" && <AdminTab />}
+        {activeTab === "admin" && <AdminTab user={user} />}
       </main>
     </div>
   );

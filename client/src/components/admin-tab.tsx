@@ -35,10 +35,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export default function AdminTab() {
+interface AdminTabProps {
+  user: User;
+}
+
+export default function AdminTab({ user }: AdminTabProps) {
+  const isAdmin = user.role === "Administratör";
   const [showImportArticles, setShowImportArticles] = useState(false);
   const [showImportOrders, setShowImportOrders] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(isAdmin);
   const [password, setPassword] = useState("");
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
@@ -47,7 +52,7 @@ export default function AdminTab() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState<Partial<InsertUser>>({
     name: "",
-    role: "Lagerarbetare",
+    role: "Användare",
     email: "",
     password: "",
     isActive: true,
@@ -125,7 +130,7 @@ export default function AdminTab() {
         description: "Den nya användaren har lagts till",
       });
       setShowAddUserDialog(false);
-      setUserForm({ name: "", role: "Lagerarbetare", email: "", password: "", isActive: true });
+      setUserForm({ name: "", role: "Användare", email: "", password: "", isActive: true });
     },
     onError: () => {
       toast({
@@ -466,7 +471,7 @@ export default function AdminTab() {
           </div>
           <Button
             onClick={() => {
-              setUserForm({ name: "", role: "Lagerarbetare", email: "", password: "", isActive: true });
+              setUserForm({ name: "", role: "Användare", email: "", password: "", isActive: true });
               setShowAddUserDialog(true);
             }}
             data-testid="button-add-user"
@@ -657,8 +662,7 @@ export default function AdminTab() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Lagerarbetare">Lagerarbetare</SelectItem>
-                  <SelectItem value="Lagerchef">Lagerchef</SelectItem>
+                  <SelectItem value="Användare">Användare</SelectItem>
                   <SelectItem value="Administratör">Administratör</SelectItem>
                 </SelectContent>
               </Select>
@@ -745,8 +749,7 @@ export default function AdminTab() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Lagerarbetare">Lagerarbetare</SelectItem>
-                  <SelectItem value="Lagerchef">Lagerchef</SelectItem>
+                  <SelectItem value="Användare">Användare</SelectItem>
                   <SelectItem value="Administratör">Administratör</SelectItem>
                 </SelectContent>
               </Select>

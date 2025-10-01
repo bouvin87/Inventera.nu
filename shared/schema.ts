@@ -6,7 +6,7 @@ import { z } from "zod";
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
-  role: text("role").notNull().default("Lagerarbetare"),
+  role: text("role").notNull().default("Användare"),
   email: text("email"),
   password: text("password").notNull(),
   isActive: integer("is_active", { mode: 'boolean' }).notNull().default(true),
