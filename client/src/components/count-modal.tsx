@@ -37,6 +37,7 @@ export default function CountModal({ article, userId, open, onClose }: CountModa
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
       toast({
         title: "Inventering sparad",
         description: `${article.articleNumber} har inventerats`,

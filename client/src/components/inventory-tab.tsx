@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import type { Article } from "@shared/schema";
-import { Upload, Plus, CheckCircle, Clock } from "lucide-react";
+import type { Article, InventoryCount } from "@shared/schema";
+import { Upload, Plus, ChevronDown, ChevronRight, Edit2, Trash2 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import CountModal from "./count-modal";
@@ -9,6 +9,8 @@ import AddArticleModal from "./add-article-modal";
 import ImportModal from "./import-modal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
+import { sv } from "date-fns/locale";
 
 interface InventoryTabProps {
   userId: string;
@@ -28,19 +30,56 @@ export default function InventoryTab({ userId }: InventoryTabProps) {
   const [showCountModal, setShowCountModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [editingCount, setEditingCount] = useState<{ id: string; count: number; notes: string } | null>(null);
 
-  const { data: articles = [], isLoading } = useQuery<Article[]>({
+  const { data: articles = [], isLoading: articlesLoading } = useQuery<Article[]>({
     queryKey: ["/api/articles"],
   });
 
-  const updateArticleNotes = useMutation({
-    mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
-      return await apiRequest("PATCH", `/api/articles/${id}`, { notes });
+  const { data: inventoryCounts = [], isLoading: countsLoading } = useQuery<InventoryCount[]>({
+    queryKey: ["/api/inventory-counts"],
+  });
+
+  const updateInventoryCount = useMutation({
+    mutationFn: async ({ id, count, notes }: { id: string; count?: number; notes?: string | null }) => {
+      return await apiRequest("PATCH", `/api/inventory-counts/${id}`, { count, notes });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
+      setEditingCount(null);
+      toast({ title: "Inventering uppdaterad" });
     },
   });
+
+  const deleteInventoryCount = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/inventory-counts/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
+      toast({ title: "Inventering borttagen" });
+    },
+  });
+
+  // Group inventory counts by article (memoized for performance)
+  const countsByArticle = useMemo(() => {
+    return inventoryCounts.reduce((acc, count) => {
+      if (!acc[count.articleId]) {
+        acc[count.articleId] = [];
+      }
+      acc[count.articleId].push(count);
+      return acc;
+    }, {} as Record<string, InventoryCount[]>);
+  }, [inventoryCounts]);
+
+  // Calculate total count per article (memoized for performance)
+  const articleTotals = useMemo(() => {
+    return Object.entries(countsByArticle).reduce((acc, [articleId, counts]) => {
+      acc[articleId] = counts.reduce((sum, c) => sum + c.count, 0);
+      return acc;
+    }, {} as Record<string, number>);
+  }, [countsByArticle]);
 
   const handleSort = (column: keyof Article) => {
     if (sortColumn === column) {
@@ -49,6 +88,16 @@ export default function InventoryTab({ userId }: InventoryTabProps) {
       setSortColumn(column);
       setSortDirection("asc");
     }
+  };
+
+  const toggleRow = (articleId: string) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(articleId)) {
+      newExpanded.delete(articleId);
+    } else {
+      newExpanded.add(articleId);
+    }
+    setExpandedRows(newExpanded);
   };
 
   const filteredAndSortedArticles = articles
@@ -70,7 +119,7 @@ export default function InventoryTab({ userId }: InventoryTabProps) {
       return aVal > bVal ? direction : -direction;
     });
 
-  if (isLoading) {
+  if (articlesLoading || countsLoading) {
     return (
       <div className="text-center py-12">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
@@ -169,6 +218,7 @@ export default function InventoryTab({ userId }: InventoryTabProps) {
           <table className="w-full" data-testid="table-inventory">
             <thead className="bg-muted sticky top-0">
               <tr>
+                <th className="px-4 py-3 w-12"></th>
                 <th
                   className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground"
                   onClick={() => handleSort("articleNumber")}
@@ -218,10 +268,7 @@ export default function InventoryTab({ userId }: InventoryTabProps) {
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Anteckningar
+                  Totalt inventerat
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Åtgärder
@@ -236,71 +283,200 @@ export default function InventoryTab({ userId }: InventoryTabProps) {
                   </td>
                 </tr>
               ) : (
-                filteredAndSortedArticles.map((article) => (
-                  <tr
-                    key={article.id}
-                    className="hover:bg-muted/50 transition-colors"
-                    data-testid={`row-article-${article.id}`}
-                  >
-                    <td className="px-4 py-4 text-sm font-mono font-medium" data-testid={`text-article-number-${article.id}`}>
-                      {article.articleNumber}
-                    </td>
-                    <td className="px-4 py-4 text-sm" data-testid={`text-description-${article.id}`}>
-                      {article.description}
-                    </td>
-                    <td className="px-4 py-4 text-sm font-mono" data-testid={`text-length-${article.id}`}>
-                      {article.length}
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded text-xs font-medium">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
-                        {article.location}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      {article.isInventoried ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent/10 text-accent rounded-full text-xs font-medium">
-                          <CheckCircle className="w-3 h-3" />
-                          Inventerad
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-muted text-muted-foreground rounded-full text-xs font-medium">
-                          <Clock className="w-3 h-3" />
-                          Ej inventerad
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      <Input
-                        value={article.notes || ""}
-                        onChange={(e) => {
-                          updateArticleNotes.mutate({ id: article.id, notes: e.target.value });
-                        }}
-                        placeholder="Lägg till anteckning..."
-                        className="text-sm"
-                        data-testid={`input-notes-${article.id}`}
-                      />
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <Button
-                        onClick={() => {
-                          setSelectedArticle(article);
-                          setShowCountModal(true);
-                        }}
-                        size="sm"
-                        data-testid={`button-inventory-${article.id}`}
+                filteredAndSortedArticles.map((article) => {
+                  const articleCounts = countsByArticle[article.id] || [];
+                  const totalCount = articleTotals[article.id] || 0;
+                  const isExpanded = expandedRows.has(article.id);
+                  const hasInventories = articleCounts.length > 0;
+
+                  return (
+                    <Fragment key={article.id}>
+                      <tr
+                        className="hover:bg-muted/50 transition-colors"
+                        data-testid={`row-article-${article.id}`}
                       >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                        </svg>
-                        Inventera
-                      </Button>
-                    </td>
-                  </tr>
-                ))
+                        <td className="px-4 py-4">
+                          {hasInventories && (
+                            <button
+                              onClick={() => toggleRow(article.id)}
+                              className="text-muted-foreground hover:text-foreground transition-colors"
+                              data-testid={`button-expand-${article.id}`}
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="w-4 h-4" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-sm font-mono font-medium" data-testid={`text-article-number-${article.id}`}>
+                          {article.articleNumber}
+                        </td>
+                        <td className="px-4 py-4 text-sm" data-testid={`text-description-${article.id}`}>
+                          {article.description}
+                        </td>
+                        <td className="px-4 py-4 text-sm font-mono" data-testid={`text-length-${article.id}`}>
+                          {article.length}
+                        </td>
+                        <td className="px-4 py-4 text-sm">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded text-xs font-medium">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            {article.location}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-sm" data-testid={`text-total-count-${article.id}`}>
+                          {hasInventories ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-accent/10 text-accent rounded-full text-sm font-semibold">
+                              {totalCount} st
+                              {articleCounts.length > 1 && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({articleCounts.length} inv.)
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">Ej inventerad</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <Button
+                            onClick={() => {
+                              setSelectedArticle(article);
+                              setShowCountModal(true);
+                            }}
+                            size="sm"
+                            data-testid={`button-inventory-${article.id}`}
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Inventera
+                          </Button>
+                        </td>
+                      </tr>
+
+                      {/* Expanded inventory counts */}
+                      {isExpanded && hasInventories && (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-2 bg-muted/30">
+                            <div className="space-y-2">
+                              {articleCounts.map((count) => (
+                                <div
+                                  key={count.id}
+                                  className="flex items-center gap-4 p-3 bg-card border border-border rounded-lg"
+                                  data-testid={`inventory-count-${count.id}`}
+                                >
+                                  {editingCount?.id === count.id ? (
+                                    <>
+                                      <div className="flex-1 grid grid-cols-3 gap-3">
+                                        <div>
+                                          <label className="block text-xs text-muted-foreground mb-1">Antal</label>
+                                          <Input
+                                            type="number"
+                                            value={editingCount.count}
+                                            onChange={(e) => setEditingCount({ ...editingCount, count: parseInt(e.target.value) || 0 })}
+                                            className="text-sm"
+                                            data-testid={`input-edit-count-${count.id}`}
+                                          />
+                                        </div>
+                                        <div className="col-span-2">
+                                          <label className="block text-xs text-muted-foreground mb-1">Anteckningar</label>
+                                          <Input
+                                            value={editingCount.notes || ""}
+                                            onChange={(e) => setEditingCount({ ...editingCount, notes: e.target.value })}
+                                            placeholder="Anteckningar..."
+                                            className="text-sm"
+                                            data-testid={`input-edit-notes-${count.id}`}
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => {
+                                            updateInventoryCount.mutate({
+                                              id: count.id,
+                                              count: editingCount.count,
+                                              notes: editingCount.notes,
+                                            });
+                                          }}
+                                          data-testid={`button-save-${count.id}`}
+                                        >
+                                          Spara
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setEditingCount(null)}
+                                          data-testid={`button-cancel-${count.id}`}
+                                        >
+                                          Avbryt
+                                        </Button>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="flex-1 grid grid-cols-4 gap-4 text-sm">
+                                        <div>
+                                          <span className="text-xs text-muted-foreground block mb-1">Antal</span>
+                                          <span className="font-semibold text-accent" data-testid={`text-count-${count.id}`}>
+                                            {count.count} st
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="text-xs text-muted-foreground block mb-1">Användare</span>
+                                          <span className="text-foreground" data-testid={`text-user-${count.id}`}>
+                                            {count.userId}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="text-xs text-muted-foreground block mb-1">Datum</span>
+                                          <span className="text-foreground" data-testid={`text-date-${count.id}`}>
+                                            {count.createdAt ? format(new Date(count.createdAt), "d MMM yyyy HH:mm", { locale: sv }) : "-"}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="text-xs text-muted-foreground block mb-1">Anteckningar</span>
+                                          <span className="text-foreground" data-testid={`text-notes-${count.id}`}>
+                                            {count.notes || "-"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setEditingCount({ id: count.id, count: count.count, notes: count.notes || "" })}
+                                          data-testid={`button-edit-${count.id}`}
+                                        >
+                                          <Edit2 className="w-3 h-3" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => {
+                                            if (confirm("Är du säker på att du vill ta bort denna inventering?")) {
+                                              deleteInventoryCount.mutate(count.id);
+                                            }
+                                          }}
+                                          data-testid={`button-delete-${count.id}`}
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })
               )}
             </tbody>
           </table>

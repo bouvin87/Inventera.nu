@@ -26,6 +26,11 @@ export default function Home({ user, onLogout }: HomeProps) {
       case "articles_imported":
         queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
         break;
+      case "inventory_count_created":
+      case "inventory_count_updated":
+      case "inventory_count_deleted":
+        queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
+        break;
       case "order_line_created":
       case "order_line_inventoried":
       case "order_lines_imported":
