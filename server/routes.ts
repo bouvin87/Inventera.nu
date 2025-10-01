@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { insertArticleSchema, insertOrderLineSchema, insertUserSchema, updateArticleInventorySchema } from "@shared/schema";
+import { insertArticleSchema, insertOrderLineSchema, insertUserSchema, updateArticleInventorySchema, insertInventoryCountSchema, updateInventoryCountSchema } from "@shared/schema";
 import multer from "multer";
 import { read, utils } from "xlsx";
 
@@ -119,16 +119,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Article not found" });
     }
 
-    const updated = await storage.updateArticle(req.params.id, {
-      inventoryCount: result.data.inventoryCount,
+    // Create inventory count entry
+    const inventoryCount = await storage.createInventoryCount({
+      articleId: req.params.id,
+      userId: result.data.userId,
+      count: result.data.inventoryCount,
       notes: result.data.notes,
-      isInventoried: true,
-      lastInventoriedBy: result.data.userId,
-      lastInventoriedAt: new Date(),
     });
 
-    broadcast({ type: "article_inventoried", data: updated });
+    broadcast({ type: "inventory_count_created", data: inventoryCount });
+    res.json(inventoryCount);
+  });
+
+  // Inventory Counts
+  app.get("/api/inventory-counts", async (_req, res) => {
+    const inventoryCounts = await storage.getAllInventoryCounts();
+    res.json(inventoryCounts);
+  });
+
+  app.get("/api/inventory-counts/article/:articleId", async (req, res) => {
+    const inventoryCounts = await storage.getInventoryCounts(req.params.articleId);
+    res.json(inventoryCounts);
+  });
+
+  app.patch("/api/inventory-counts/:id", async (req, res) => {
+    const result = updateInventoryCountSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ message: "Invalid inventory count data" });
+    }
+    
+    // Filter out undefined values to avoid overwriting existing data
+    const updates = Object.fromEntries(
+      Object.entries(result.data).filter(([_, v]) => v !== undefined)
+    );
+    
+    const updated = await storage.updateInventoryCount(req.params.id, updates);
+    if (!updated) {
+      return res.status(404).json({ message: "Inventory count not found" });
+    }
+    broadcast({ type: "inventory_count_updated", data: updated });
     res.json(updated);
+  });
+
+  app.delete("/api/inventory-counts/:id", async (req, res) => {
+    // Fetch the inventory count before deletion to get articleId for broadcast
+    const inventoryCount = await storage.getAllInventoryCounts().then(counts => 
+      counts.find(ic => ic.id === req.params.id)
+    );
+    if (!inventoryCount) {
+      return res.status(404).json({ message: "Inventory count not found" });
+    }
+
+    const deleted = await storage.deleteInventoryCount(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ message: "Inventory count not found" });
+    }
+    
+    broadcast({ type: "inventory_count_deleted", data: { id: req.params.id, articleId: inventoryCount.articleId } });
+    res.json({ success: true });
   });
 
   // Order Lines

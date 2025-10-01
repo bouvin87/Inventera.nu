@@ -77,6 +77,11 @@ export const updateArticleInventorySchema = z.object({
   userId: z.string(),
 });
 
+export const updateInventoryCountSchema = z.object({
+  count: z.number().int().min(0).optional(),
+  notes: z.string().nullable().optional(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Article = typeof articles.$inferSelect;

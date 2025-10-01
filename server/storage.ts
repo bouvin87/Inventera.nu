@@ -152,6 +152,8 @@ export class MemStorage implements IStorage {
   }
 
   async deleteAllArticles(): Promise<void> {
+    // Cascade delete: remove all inventory counts for deleted articles
+    this.inventoryCounts.clear();
     this.articles.clear();
   }
 
