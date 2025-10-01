@@ -1,7 +1,14 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { OrderLine } from "@shared/schema";
-import { Upload, CheckCircle, Clock, ArrowUpDown, Search, X } from "lucide-react";
+import {
+  Upload,
+  CheckCircle,
+  Clock,
+  ArrowUpDown,
+  Search,
+  X,
+} from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -10,14 +17,33 @@ import { z } from "zod";
 import ImportModal from "./import-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 interface OrdersTabProps {
   userId: string;
 }
 
-type SortField = "orderNumber" | "articleNumber" | "description" | "length" | "position" | "quantity" | "pickStatus";
+type SortField =
+  | "orderNumber"
+  | "articleNumber"
+  | "description"
+  | "length"
+  | "position"
+  | "quantity"
+  | "pickStatus";
 type SortOrder = "asc" | "desc";
 
 const inventoryFormSchema = z.object({
@@ -30,8 +56,10 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<SortField>("orderNumber");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
-  const [inventoryingOrder, setInventoryingOrder] = useState<OrderLine | null>(null);
-  
+  const [inventoryingOrder, setInventoryingOrder] = useState<OrderLine | null>(
+    null,
+  );
+
   const form = useForm<z.infer<typeof inventoryFormSchema>>({
     resolver: zodResolver(inventoryFormSchema),
     defaultValues: {
@@ -44,8 +72,17 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
   });
 
   const markInventoried = useMutation({
-    mutationFn: async ({ id, inventoriedQuantity }: { id: string; inventoriedQuantity: number }) => {
-      return await apiRequest("POST", `/api/order-lines/${id}/inventory`, { userId, inventoriedQuantity });
+    mutationFn: async ({
+      id,
+      inventoriedQuantity,
+    }: {
+      id: string;
+      inventoriedQuantity: number;
+    }) => {
+      return await apiRequest("POST", `/api/order-lines/${id}/inventory`, {
+        userId,
+        inventoriedQuantity,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/order-lines"] });
@@ -89,7 +126,7 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
       // Primary sort by the selected field
       const aVal = a[sortField];
       const bVal = b[sortField];
-      
+
       if (aVal == null && bVal == null) {
         // If both values are null, use default sorting (orderNumber + position)
         const orderNumA = a.orderNumber?.toLowerCase() || "";
@@ -101,21 +138,21 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
         const posB = b.position?.toLowerCase() || "";
         return posA < posB ? -1 : 1;
       }
-      
+
       if (aVal == null) return sortOrder === "asc" ? 1 : -1;
       if (bVal == null) return sortOrder === "asc" ? -1 : 1;
-      
+
       if (typeof aVal === "number" && typeof bVal === "number") {
         const result = aVal - bVal;
         if (result !== 0) return sortOrder === "asc" ? result : -result;
       } else {
         const aStr = String(aVal).toLowerCase();
         const bStr = String(bVal).toLowerCase();
-        
+
         if (aStr < bStr) return sortOrder === "asc" ? -1 : 1;
         if (aStr > bStr) return sortOrder === "asc" ? 1 : -1;
       }
-      
+
       // Secondary sort by orderNumber + position when primary values are equal
       const orderNumA = a.orderNumber?.toLowerCase() || "";
       const orderNumB = b.orderNumber?.toLowerCase() || "";
@@ -150,11 +187,13 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
     form.setValue("inventoriedQuantity", order.quantity);
   };
 
-  const handleInventorySubmit = (values: z.infer<typeof inventoryFormSchema>) => {
+  const handleInventorySubmit = (
+    values: z.infer<typeof inventoryFormSchema>,
+  ) => {
     if (inventoryingOrder) {
-      markInventoried.mutate({ 
-        id: inventoryingOrder.id, 
-        inventoriedQuantity: values.inventoriedQuantity 
+      markInventoried.mutate({
+        id: inventoryingOrder.id,
+        inventoriedQuantity: values.inventoriedQuantity,
       });
     }
   };
@@ -172,18 +211,15 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
     <>
       <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div>
-          <h2 className="text-2xl font-bold mb-1" data-testid="text-orders-title">Orderrader</h2>
-          <p className="text-sm text-muted-foreground">Inventera plockade orderrader</p>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            onClick={() => setShowImportModal(true)}
-            variant="secondary"
-            data-testid="button-import-orders"
+          <h2
+            className="text-2xl font-bold mb-1"
+            data-testid="text-orders-title"
           >
-            <Upload className="w-4 h-4 mr-2" />
-            Importera orderrader
-          </Button>
+            Orderrader
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Inventera plockade orderrader
+          </p>
         </div>
       </div>
 
@@ -216,12 +252,26 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
         <div className="bg-card rounded-lg border border-border p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Totalt orderrader</p>
-              <p className="text-2xl font-bold" data-testid="text-total-orders">{stats.total}</p>
+              <p className="text-sm text-muted-foreground mb-1">
+                Totalt orderrader
+              </p>
+              <p className="text-2xl font-bold" data-testid="text-total-orders">
+                {stats.total}
+              </p>
             </div>
             <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              <svg
+                className="w-6 h-6 text-primary"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                ></path>
               </svg>
             </div>
           </div>
@@ -230,7 +280,12 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground mb-1">Inventerade</p>
-              <p className="text-2xl font-bold text-accent" data-testid="text-inventoried-orders">{stats.inventoried}</p>
+              <p
+                className="text-2xl font-bold text-accent"
+                data-testid="text-inventoried-orders"
+              >
+                {stats.inventoried}
+              </p>
             </div>
             <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center">
               <CheckCircle className="w-6 h-6 text-accent" />
@@ -241,7 +296,12 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground mb-1">Återstår</p>
-              <p className="text-2xl font-bold text-destructive" data-testid="text-remaining-orders">{stats.remaining}</p>
+              <p
+                className="text-2xl font-bold text-destructive"
+                data-testid="text-remaining-orders"
+              >
+                {stats.remaining}
+              </p>
             </div>
             <div className="w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center">
               <Clock className="w-6 h-6 text-destructive" />
@@ -256,74 +316,88 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
           <table className="w-full" data-testid="table-orders">
             <thead className="bg-muted">
               <tr>
-                <th 
+                <th
                   className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
                   onClick={() => handleSort("orderNumber")}
                   data-testid="header-order-number"
                 >
                   <div className="flex items-center gap-1">
                     Ordernr
-                    <ArrowUpDown className={`w-3 h-3 ${sortField === "orderNumber" ? "text-primary" : ""}`} />
+                    <ArrowUpDown
+                      className={`w-3 h-3 ${sortField === "orderNumber" ? "text-primary" : ""}`}
+                    />
                   </div>
                 </th>
-                <th 
+                <th
                   className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
                   onClick={() => handleSort("position")}
                   data-testid="header-position"
                 >
                   <div className="flex items-center gap-1">
                     Pos
-                    <ArrowUpDown className={`w-3 h-3 ${sortField === "position" ? "text-primary" : ""}`} />
+                    <ArrowUpDown
+                      className={`w-3 h-3 ${sortField === "position" ? "text-primary" : ""}`}
+                    />
                   </div>
                 </th>
-                <th 
+                <th
                   className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
                   onClick={() => handleSort("articleNumber")}
                   data-testid="header-article-number"
                 >
                   <div className="flex items-center gap-1">
                     Artikelnr
-                    <ArrowUpDown className={`w-3 h-3 ${sortField === "articleNumber" ? "text-primary" : ""}`} />
+                    <ArrowUpDown
+                      className={`w-3 h-3 ${sortField === "articleNumber" ? "text-primary" : ""}`}
+                    />
                   </div>
                 </th>
-                <th 
+                <th
                   className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
                   onClick={() => handleSort("description")}
                   data-testid="header-description"
                 >
                   <div className="flex items-center gap-1">
                     Beskrivning
-                    <ArrowUpDown className={`w-3 h-3 ${sortField === "description" ? "text-primary" : ""}`} />
+                    <ArrowUpDown
+                      className={`w-3 h-3 ${sortField === "description" ? "text-primary" : ""}`}
+                    />
                   </div>
                 </th>
-                <th 
+                <th
                   className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
                   onClick={() => handleSort("length")}
                   data-testid="header-length"
                 >
                   <div className="flex items-center gap-1">
                     Längd
-                    <ArrowUpDown className={`w-3 h-3 ${sortField === "length" ? "text-primary" : ""}`} />
+                    <ArrowUpDown
+                      className={`w-3 h-3 ${sortField === "length" ? "text-primary" : ""}`}
+                    />
                   </div>
                 </th>
-                <th 
+                <th
                   className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
                   onClick={() => handleSort("quantity")}
                   data-testid="header-quantity"
                 >
                   <div className="flex items-center gap-1">
                     Antal
-                    <ArrowUpDown className={`w-3 h-3 ${sortField === "quantity" ? "text-primary" : ""}`} />
+                    <ArrowUpDown
+                      className={`w-3 h-3 ${sortField === "quantity" ? "text-primary" : ""}`}
+                    />
                   </div>
                 </th>
-                <th 
+                <th
                   className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
                   onClick={() => handleSort("pickStatus")}
                   data-testid="header-pick-status"
                 >
                   <div className="flex items-center gap-1">
                     Plockstatus
-                    <ArrowUpDown className={`w-3 h-3 ${sortField === "pickStatus" ? "text-primary" : ""}`} />
+                    <ArrowUpDown
+                      className={`w-3 h-3 ${sortField === "pickStatus" ? "text-primary" : ""}`}
+                    />
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -337,8 +411,11 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
             <tbody className="divide-y divide-border">
               {filteredAndSortedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
-                    {orderLines.length === 0 
+                  <td
+                    colSpan={9}
+                    className="px-4 py-12 text-center text-muted-foreground"
+                  >
+                    {orderLines.length === 0
                       ? "Inga orderrader hittades. Importera orderrader från Excel."
                       : "Inga orderrader matchar sökningen."}
                   </td>
@@ -350,19 +427,34 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                     className={`hover:bg-muted/50 transition-colors ${order.isInventoried ? "bg-accent/5" : ""}`}
                     data-testid={`row-order-${order.id}`}
                   >
-                    <td className="px-4 py-4 text-sm font-mono font-medium" data-testid={`text-order-number-${order.id}`}>
+                    <td
+                      className="px-4 py-4 text-sm font-mono font-medium"
+                      data-testid={`text-order-number-${order.id}`}
+                    >
                       {order.orderNumber}
                     </td>
-                    <td className="px-4 py-4 text-sm font-mono" data-testid={`text-position-${order.id}`}>
+                    <td
+                      className="px-4 py-4 text-sm font-mono"
+                      data-testid={`text-position-${order.id}`}
+                    >
                       {order.position || "-"}
                     </td>
-                    <td className="px-4 py-4 text-sm font-mono" data-testid={`text-article-number-${order.id}`}>
+                    <td
+                      className="px-4 py-4 text-sm font-mono"
+                      data-testid={`text-article-number-${order.id}`}
+                    >
                       {order.articleNumber}
                     </td>
-                    <td className="px-4 py-4 text-sm" data-testid={`text-description-${order.id}`}>
+                    <td
+                      className="px-4 py-4 text-sm"
+                      data-testid={`text-description-${order.id}`}
+                    >
                       {order.description}
                     </td>
-                    <td className="px-4 py-4 text-sm font-mono" data-testid={`text-length-${order.id}`}>
+                    <td
+                      className="px-4 py-4 text-sm font-mono"
+                      data-testid={`text-length-${order.id}`}
+                    >
                       {order.length}
                     </td>
                     <td className="px-4 py-4">
@@ -372,11 +464,13 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                          order.pickStatus === "Plockat"
-                            ? "bg-accent/10 text-accent"
-                            : "bg-muted text-muted-foreground"
-                        }`}>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                            order.pickStatus === "Plockat"
+                              ? "bg-accent/10 text-accent"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
                           {order.pickStatus === "Plockat" ? (
                             <CheckCircle className="w-3 h-3" />
                           ) : (
@@ -392,8 +486,14 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm font-mono" data-testid={`text-inventoried-quantity-${order.id}`}>
-                      {order.inventoriedQuantity !== null && order.inventoriedQuantity !== undefined ? order.inventoriedQuantity : "–"}
+                    <td
+                      className="px-4 py-4 text-sm font-mono"
+                      data-testid={`text-inventoried-quantity-${order.id}`}
+                    >
+                      {order.inventoriedQuantity !== null &&
+                      order.inventoriedQuantity !== undefined
+                        ? order.inventoriedQuantity
+                        : "–"}
                     </td>
                     <td className="px-4 py-4 text-right">
                       {order.isInventoried ? (
@@ -432,19 +532,34 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
         onClose={() => setShowImportModal(false)}
       />
 
-      <Dialog open={!!inventoryingOrder} onOpenChange={() => setInventoryingOrder(null)}>
+      <Dialog
+        open={!!inventoryingOrder}
+        onOpenChange={() => setInventoryingOrder(null)}
+      >
         <DialogContent data-testid="modal-inventory-quantity">
           <DialogHeader>
             <DialogTitle>Ange inventerat antal</DialogTitle>
           </DialogHeader>
-          
+
           {inventoryingOrder && (
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleInventorySubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(handleInventorySubmit)}
+                className="space-y-4"
+              >
                 <div className="bg-muted p-3 rounded-lg space-y-1">
-                  <p className="text-sm"><span className="font-medium">Orderrad:</span> {inventoryingOrder.orderNumber}</p>
-                  <p className="text-sm"><span className="font-medium">Artikel:</span> {inventoryingOrder.articleNumber}</p>
-                  <p className="text-sm"><span className="font-medium">Beställt antal:</span> {inventoryingOrder.quantity}</p>
+                  <p className="text-sm">
+                    <span className="font-medium">Orderrad:</span>{" "}
+                    {inventoryingOrder.orderNumber}
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Artikel:</span>{" "}
+                    {inventoryingOrder.articleNumber}
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Beställt antal:</span>{" "}
+                    {inventoryingOrder.quantity}
+                  </p>
                 </div>
 
                 <FormField
@@ -459,7 +574,9 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                           min="0"
                           max={inventoryingOrder.quantity}
                           {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          onChange={(e) =>
+                            field.onChange(parseInt(e.target.value) || 0)
+                          }
                           data-testid="input-inventoried-quantity"
                         />
                       </FormControl>

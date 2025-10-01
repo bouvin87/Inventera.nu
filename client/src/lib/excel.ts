@@ -1,15 +1,18 @@
 import * as XLSX from "xlsx";
-import type { Article, OrderLine, InventoryCount } from "@shared/schema";
+import type { Article, OrderLine, InventoryCount, User } from "@shared/schema";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
 
 export function downloadArticlesAsExcel(
   articles: Article[], 
-  inventoryCounts: InventoryCount[], 
+  inventoryCounts: InventoryCount[],
+  users: User[],
   filename: string = "inventory_report.xlsx"
 ) {
   // Create article lookup map
   const articleMap = new Map(articles.map(a => [a.id, a]));
+  // Create user lookup map
+  const userMap = new Map(users.map(u => [u.id, u.name]));
   
   // Create data rows - one per inventory count
   const data = inventoryCounts.map(count => {
@@ -20,7 +23,7 @@ export function downloadArticlesAsExcel(
       "Längd": article?.length ?? "",
       "Lagerplats": article?.location ?? "",
       "Inventerat antal": count.count,
-      "Användare": count.userId,
+      "Användare": userMap.get(count.userId) || count.userId,
       "Datum": count.createdAt ? format(new Date(count.createdAt), "yyyy-MM-dd HH:mm", { locale: sv }) : "",
       "Anteckningar": count.notes ?? "",
     };
@@ -53,11 +56,14 @@ export function downloadOrderLinesAsExcel(orderLines: OrderLine[], filename: str
 
 export function downloadDiscrepanciesAsExcel(
   articles: Article[], 
-  inventoryCounts: InventoryCount[], 
+  inventoryCounts: InventoryCount[],
+  users: User[],
   filename: string = "discrepancies_report.xlsx"
 ) {
   // Create article lookup map
   const articleMap = new Map(articles.map(a => [a.id, a]));
+  // Create user lookup map
+  const userMap = new Map(users.map(u => [u.id, u.name]));
   
   // Filter inventory counts with notes (discrepancies)
   const discrepancies = inventoryCounts.filter(count => count.notes && count.notes.length > 0);
@@ -69,7 +75,7 @@ export function downloadDiscrepanciesAsExcel(
       "Beskrivning": article?.description ?? "",
       "Lagerplats": article?.location ?? "",
       "Inventerat antal": count.count,
-      "Användare": count.userId,
+      "Användare": userMap.get(count.userId) || count.userId,
       "Datum": count.createdAt ? format(new Date(count.createdAt), "yyyy-MM-dd HH:mm", { locale: sv }) : "",
       "Anteckningar": count.notes,
     };

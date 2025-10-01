@@ -255,7 +255,7 @@ export default function AdminTab({ user }: AdminTabProps) {
   };
 
   const handleExportInventory = () => {
-    downloadArticlesAsExcel(articles, inventoryCounts);
+    downloadArticlesAsExcel(articles, inventoryCounts, users);
   };
 
   const handleExportOrders = () => {
@@ -263,7 +263,7 @@ export default function AdminTab({ user }: AdminTabProps) {
   };
 
   const handleExportDiscrepancies = () => {
-    downloadDiscrepanciesAsExcel(articles, inventoryCounts);
+    downloadDiscrepanciesAsExcel(articles, inventoryCounts, users);
   };
 
   const getTimeAgo = (date: string | null) => {

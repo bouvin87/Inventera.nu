@@ -1,6 +1,6 @@
 import { useState, useMemo, Fragment } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import type { Article, InventoryCount } from "@shared/schema";
+import type { Article, InventoryCount, User } from "@shared/schema";
 import { Upload, Plus, ChevronDown, ChevronRight, Edit2, Trash2, Search, X } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +35,15 @@ export default function InventoryTab({ userId }: InventoryTabProps) {
   const { data: inventoryCounts = [], isLoading: countsLoading } = useQuery<InventoryCount[]>({
     queryKey: ["/api/inventory-counts"],
   });
+
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+  });
+
+  // Create user lookup map for displaying names
+  const userMap = useMemo(() => {
+    return new Map(users.map(u => [u.id, u.name]));
+  }, [users]);
 
   const updateInventoryCount = useMutation({
     mutationFn: async ({ id, count, notes }: { id: string; count?: number; notes?: string | null }) => {
@@ -383,7 +392,7 @@ export default function InventoryTab({ userId }: InventoryTabProps) {
                                         <div>
                                           <span className="text-xs text-muted-foreground block mb-1">Användare</span>
                                           <span className="text-foreground" data-testid={`text-user-${count.id}`}>
-                                            {count.userId}
+                                            {userMap.get(count.userId) || count.userId}
                                           </span>
                                         </div>
                                         <div>

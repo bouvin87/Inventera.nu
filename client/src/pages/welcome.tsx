@@ -48,7 +48,7 @@ export default function Welcome({ onSelectUser }: WelcomeProps) {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedName || !password) {
       toast({
         title: "Fyll i alla fält",
@@ -79,7 +79,9 @@ export default function Welcome({ onSelectUser }: WelcomeProps) {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
             <Clipboard className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Välkommen till Inventeringsappen</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            Välkommen till Inventera.nu
+          </h1>
           <p className="text-muted-foreground">Logga in för att fortsätta</p>
         </div>
 
@@ -131,10 +133,6 @@ export default function Welcome({ onSelectUser }: WelcomeProps) {
             )}
           </Button>
         </form>
-
-        <p className="text-xs text-muted-foreground text-center mt-4">
-          Standardlösenord: Euro2025!
-        </p>
       </div>
     </div>
   );
