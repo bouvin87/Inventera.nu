@@ -251,9 +251,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/order-lines/:id/inventory", async (req, res) => {
-    const { userId } = req.body;
+    const { userId, inventoriedQuantity } = req.body;
     if (!userId) {
       return res.status(400).json({ message: "User ID required" });
+    }
+    if (inventoriedQuantity === undefined || inventoriedQuantity === null) {
+      return res.status(400).json({ message: "Inventoried quantity required" });
     }
 
     const orderLine = await storage.getOrderLine(req.params.id);
@@ -261,10 +264,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Order line not found" });
     }
 
+    if (inventoriedQuantity < 0 || inventoriedQuantity > orderLine.quantity) {
+      return res.status(400).json({ 
+        message: `Inventerat antal måste vara mellan 0 och ${orderLine.quantity}`,
+        max: orderLine.quantity 
+      });
+    }
+
     const updated = await storage.updateOrderLine(req.params.id, {
       isInventoried: true,
       inventoriedBy: userId,
       inventoriedAt: new Date().toISOString(),
+      inventoriedQuantity,
     });
 
     broadcast({ type: "order_line_inventoried", data: updated });
@@ -281,6 +292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       isInventoried: false,
       inventoriedBy: null,
       inventoriedAt: null,
+      inventoriedQuantity: null,
     });
 
     broadcast({ type: "order_line_inventory_undone", data: updated });

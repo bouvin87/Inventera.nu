@@ -4,9 +4,14 @@ import type { OrderLine } from "@shared/schema";
 import { Upload, CheckCircle, Clock, ArrowUpDown, Search, X } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import ImportModal from "./import-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 interface OrdersTabProps {
   userId: string;
@@ -15,23 +20,37 @@ interface OrdersTabProps {
 type SortField = "orderNumber" | "articleNumber" | "description" | "length" | "position" | "quantity" | "pickStatus";
 type SortOrder = "asc" | "desc";
 
+const inventoryFormSchema = z.object({
+  inventoriedQuantity: z.coerce.number().int().min(0),
+});
+
 export default function OrdersTab({ userId }: OrdersTabProps) {
   const { toast } = useToast();
   const [showImportModal, setShowImportModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<SortField>("orderNumber");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  const [inventoryingOrder, setInventoryingOrder] = useState<OrderLine | null>(null);
+  
+  const form = useForm<z.infer<typeof inventoryFormSchema>>({
+    resolver: zodResolver(inventoryFormSchema),
+    defaultValues: {
+      inventoriedQuantity: 0,
+    },
+  });
 
   const { data: orderLines = [], isLoading } = useQuery<OrderLine[]>({
     queryKey: ["/api/order-lines"],
   });
 
   const markInventoried = useMutation({
-    mutationFn: async (id: string) => {
-      return await apiRequest("POST", `/api/order-lines/${id}/inventory`, { userId });
+    mutationFn: async ({ id, inventoriedQuantity }: { id: string; inventoriedQuantity: number }) => {
+      return await apiRequest("POST", `/api/order-lines/${id}/inventory`, { userId, inventoriedQuantity });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/order-lines"] });
+      setInventoryingOrder(null);
+      form.reset();
       toast({
         title: "Orderrad inventerad",
         description: "Orderraden har markerats som inventerad",
@@ -123,6 +142,20 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
     } else {
       setSortField(field);
       setSortOrder("asc");
+    }
+  };
+
+  const openInventoryModal = (order: OrderLine) => {
+    setInventoryingOrder(order);
+    form.setValue("inventoriedQuantity", order.quantity);
+  };
+
+  const handleInventorySubmit = (values: z.infer<typeof inventoryFormSchema>) => {
+    if (inventoryingOrder) {
+      markInventoried.mutate({ 
+        id: inventoryingOrder.id, 
+        inventoriedQuantity: values.inventoriedQuantity 
+      });
     }
   };
 
@@ -293,6 +326,9 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                     <ArrowUpDown className={`w-3 h-3 ${sortField === "pickStatus" ? "text-primary" : ""}`} />
                   </div>
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Inventerat antal
+                </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Åtgärder
                 </th>
@@ -301,7 +337,7 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
             <tbody className="divide-y divide-border">
               {filteredAndSortedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                     {orderLines.length === 0 
                       ? "Inga orderrader hittades. Importera orderrader från Excel."
                       : "Inga orderrader matchar sökningen."}
@@ -356,6 +392,9 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                         )}
                       </div>
                     </td>
+                    <td className="px-4 py-4 text-sm font-mono" data-testid={`text-inventoried-quantity-${order.id}`}>
+                      {order.inventoriedQuantity !== null && order.inventoriedQuantity !== undefined ? order.inventoriedQuantity : "–"}
+                    </td>
                     <td className="px-4 py-4 text-right">
                       {order.isInventoried ? (
                         <Button
@@ -369,7 +408,7 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                         </Button>
                       ) : (
                         <Button
-                          onClick={() => markInventoried.mutate(order.id)}
+                          onClick={() => openInventoryModal(order)}
                           size="sm"
                           className="bg-accent hover:bg-accent/90 text-accent-foreground"
                           data-testid={`button-mark-inventoried-${order.id}`}
@@ -392,6 +431,67 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
         open={showImportModal}
         onClose={() => setShowImportModal(false)}
       />
+
+      <Dialog open={!!inventoryingOrder} onOpenChange={() => setInventoryingOrder(null)}>
+        <DialogContent data-testid="modal-inventory-quantity">
+          <DialogHeader>
+            <DialogTitle>Ange inventerat antal</DialogTitle>
+          </DialogHeader>
+          
+          {inventoryingOrder && (
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleInventorySubmit)} className="space-y-4">
+                <div className="bg-muted p-3 rounded-lg space-y-1">
+                  <p className="text-sm"><span className="font-medium">Orderrad:</span> {inventoryingOrder.orderNumber}</p>
+                  <p className="text-sm"><span className="font-medium">Artikel:</span> {inventoryingOrder.articleNumber}</p>
+                  <p className="text-sm"><span className="font-medium">Beställt antal:</span> {inventoryingOrder.quantity}</p>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="inventoriedQuantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Inventerat antal</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          max={inventoryingOrder.quantity}
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          data-testid="input-inventoried-quantity"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setInventoryingOrder(null)}
+                    className="flex-1"
+                    data-testid="button-cancel-inventory"
+                  >
+                    Avbryt
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={markInventoried.isPending}
+                    className="flex-1"
+                    data-testid="button-confirm-inventory"
+                  >
+                    {markInventoried.isPending ? "Sparar..." : "Bekräfta"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

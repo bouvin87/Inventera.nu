@@ -38,6 +38,7 @@ export const orderLines = sqliteTable("order_lines", {
   isInventoried: integer("is_inventoried", { mode: 'boolean' }).notNull().default(false),
   inventoriedBy: text("inventoried_by").references(() => users.id),
   inventoriedAt: text("inventoried_at"),
+  inventoriedQuantity: integer("inventoried_quantity"),
   createdAt: text("created_at"),
 });
 
@@ -83,11 +84,17 @@ export const updateInventoryCountSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
+export const updateOrderLineInventorySchema = z.object({
+  userId: z.string(),
+  inventoriedQuantity: z.number().int().min(0),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Article = typeof articles.$inferSelect;
 export type InsertArticle = z.infer<typeof insertArticleSchema>;
 export type OrderLine = typeof orderLines.$inferSelect;
 export type InsertOrderLine = z.infer<typeof insertOrderLineSchema>;
+export type UpdateOrderLineInventory = z.infer<typeof updateOrderLineInventorySchema>;
 export type InventoryCount = typeof inventoryCounts.$inferSelect;
 export type InsertInventoryCount = z.infer<typeof insertInventoryCountSchema>;
