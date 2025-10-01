@@ -42,6 +42,7 @@ export function downloadOrderLinesAsExcel(orderLines: OrderLine[], filename: str
     "Antal": line.quantity,
     "Plockstatt": line.pickStatus,
     "Inventerad": line.isInventoried ? "Ja" : "Nej",
+    "Inventerat antal": line.inventoriedQuantity ?? "",
   }));
 
   const ws = XLSX.utils.json_to_sheet(data);
