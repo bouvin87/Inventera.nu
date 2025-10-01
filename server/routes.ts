@@ -273,5 +273,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(discrepancies);
   });
 
+  // Admin endpoints
+  app.post("/api/admin/verify", async (req, res) => {
+    const { password } = req.body;
+    if (password === "admin123") {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ success: false, message: "Felaktigt lösenord" });
+    }
+  });
+
+  app.post("/api/admin/clear-data", async (req, res) => {
+    const { password } = req.body;
+    if (password !== "admin123") {
+      return res.status(401).json({ success: false, message: "Felaktigt lösenord" });
+    }
+
+    await storage.clearAllData();
+    broadcast({ type: "data_cleared" });
+    res.json({ success: true, message: "Databasen har tömts" });
+  });
+
   return httpServer;
 }
