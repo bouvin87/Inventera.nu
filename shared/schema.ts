@@ -32,6 +32,7 @@ export const orderLines = sqliteTable("order_lines", {
   articleNumber: text("article_number").notNull(),
   description: text("description").notNull(),
   length: text("length").notNull(),
+  position: text("position"),
   quantity: integer("quantity").notNull(),
   pickStatus: text("pick_status").notNull().default("Ej plockat"),
   isInventoried: integer("is_inventoried", { mode: 'boolean' }).notNull().default(false),
