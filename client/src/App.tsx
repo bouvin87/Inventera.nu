@@ -14,7 +14,6 @@ function App() {
   useEffect(() => {
     const checkSavedLogin = async () => {
       const savedUserId = localStorage.getItem("loggedInUserId");
-      console.log("Checking saved login, userId from localStorage:", savedUserId);
       
       if (savedUserId && savedUserId !== "undefined" && savedUserId !== "null") {
         try {

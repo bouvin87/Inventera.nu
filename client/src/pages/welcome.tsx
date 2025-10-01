@@ -30,11 +30,10 @@ export default function Welcome({ onSelectUser }: WelcomeProps) {
 
   const loginMutation = useMutation({
     mutationFn: async (data: { name: string; password: string }) => {
-      return await apiRequest("POST", "/api/login", data);
+      const response = await apiRequest("POST", "/api/login", data);
+      return await response.json();
     },
     onSuccess: (user: User) => {
-      console.log("Login success, user:", user);
-      console.log("Saving user ID to localStorage:", user.id);
       localStorage.setItem("loggedInUserId", user.id);
       onSelectUser(user);
     },
