@@ -33,6 +33,8 @@ export default function Welcome({ onSelectUser }: WelcomeProps) {
       return await apiRequest("POST", "/api/login", data);
     },
     onSuccess: (user: User) => {
+      console.log("Login success, user:", user);
+      console.log("Saving user ID to localStorage:", user.id);
       localStorage.setItem("loggedInUserId", user.id);
       onSelectUser(user);
     },

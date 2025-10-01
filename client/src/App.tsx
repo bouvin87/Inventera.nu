@@ -14,8 +14,9 @@ function App() {
   useEffect(() => {
     const checkSavedLogin = async () => {
       const savedUserId = localStorage.getItem("loggedInUserId");
+      console.log("Checking saved login, userId from localStorage:", savedUserId);
       
-      if (savedUserId) {
+      if (savedUserId && savedUserId !== "undefined" && savedUserId !== "null") {
         try {
           const response = await fetch(`/api/users/${savedUserId}`);
           if (response.ok) {
@@ -28,6 +29,8 @@ function App() {
           console.error("Failed to fetch saved user:", error);
           localStorage.removeItem("loggedInUserId");
         }
+      } else {
+        localStorage.removeItem("loggedInUserId");
       }
       
       setIsCheckingAuth(false);

@@ -107,13 +107,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     await storage.updateUserActivity(user.id);
     
-    res.json({ 
-      id: user.id, 
-      name: user.name, 
-      role: user.role,
-      email: user.email,
-      isActive: user.isActive
-    });
+    const updatedUser = await storage.getUser(user.id);
+    
+    if (!updatedUser) {
+      return res.status(500).json({ message: "Failed to get user after login" });
+    }
+    
+    const { password: _, ...sanitizedUser } = updatedUser;
+    res.json(sanitizedUser);
   });
 
   // Articles
