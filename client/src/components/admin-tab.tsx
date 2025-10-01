@@ -1,10 +1,26 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import type { User, Article, OrderLine, InventoryCount } from "@shared/schema";
-import { Upload, Download, Users, Activity, Lock, Trash2 } from "lucide-react";
+import type { User, Article, OrderLine, InventoryCount, InsertUser } from "@shared/schema";
+import { Upload, Download, Users, Activity, Lock, Trash2, Edit, UserPlus } from "lucide-react";
 import { useState } from "react";
 import ImportModal from "./import-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { downloadArticlesAsExcel, downloadOrderLinesAsExcel, downloadDiscrepanciesAsExcel } from "@/lib/excel";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +41,16 @@ export default function AdminTab() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const [showAddUserDialog, setShowAddUserDialog] = useState(false);
+  const [showEditUserDialog, setShowEditUserDialog] = useState(false);
+  const [showDeleteUserDialog, setShowDeleteUserDialog] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userForm, setUserForm] = useState<Partial<InsertUser>>({
+    name: "",
+    role: "Lagerarbetare",
+    email: "",
+    isActive: true,
+  });
   const { toast } = useToast();
 
   const { data: users = [] } = useQuery<User[]>({
@@ -87,6 +113,72 @@ export default function AdminTab() {
     },
   });
 
+  const createUserMutation = useMutation({
+    mutationFn: async (data: InsertUser) => {
+      return await apiRequest("POST", "/api/users", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Användare skapad",
+        description: "Den nya användaren har lagts till",
+      });
+      setShowAddUserDialog(false);
+      setUserForm({ name: "", role: "Lagerarbetare", email: "", isActive: true });
+    },
+    onError: () => {
+      toast({
+        title: "Ett fel uppstod",
+        description: "Kunde inte skapa användare",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<User> }) => {
+      return await apiRequest("PATCH", `/api/users/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Användare uppdaterad",
+        description: "Användarens information har sparats",
+      });
+      setShowEditUserDialog(false);
+      setSelectedUser(null);
+    },
+    onError: () => {
+      toast({
+        title: "Ett fel uppstod",
+        description: "Kunde inte uppdatera användare",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/users/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Användare borttagen",
+        description: "Användaren har tagits bort permanent",
+      });
+      setShowDeleteUserDialog(false);
+      setSelectedUser(null);
+    },
+    onError: () => {
+      toast({
+        title: "Ett fel uppstod",
+        description: "Kunde inte ta bort användare",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     verifyPasswordMutation.mutate(password);
@@ -94,6 +186,55 @@ export default function AdminTab() {
 
   const handleClearData = () => {
     clearDataMutation.mutate();
+  };
+
+  const handleAddUser = () => {
+    if (!userForm.name) {
+      toast({
+        title: "Namn krävs",
+        description: "Ange ett namn för användaren",
+        variant: "destructive",
+      });
+      return;
+    }
+    createUserMutation.mutate(userForm as InsertUser);
+  };
+
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setUserForm({
+      name: user.name,
+      role: user.role,
+      email: user.email || "",
+      isActive: user.isActive,
+    });
+    setShowEditUserDialog(true);
+  };
+
+  const handleUpdateUser = () => {
+    if (!selectedUser) return;
+    if (!userForm.name) {
+      toast({
+        title: "Namn krävs",
+        description: "Ange ett namn för användaren",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateUserMutation.mutate({ 
+      id: selectedUser.id, 
+      data: userForm as Partial<User>
+    });
+  };
+
+  const handleDeleteUser = (user: User) => {
+    setSelectedUser(user);
+    setShowDeleteUserDialog(true);
+  };
+
+  const confirmDeleteUser = () => {
+    if (!selectedUser) return;
+    deleteUserMutation.mutate(selectedUser.id);
   };
 
   const handleExportInventory = () => {
@@ -315,6 +456,17 @@ export default function AdminTab() {
               <p className="text-sm text-muted-foreground">Hantera användare och deras behörigheter</p>
             </div>
           </div>
+          <Button
+            onClick={() => {
+              setUserForm({ name: "", role: "Lagerarbetare", email: "", isActive: true });
+              setShowAddUserDialog(true);
+            }}
+            data-testid="button-add-user"
+            className="gap-2"
+          >
+            <UserPlus className="w-4 h-4" />
+            Lägg till användare
+          </Button>
         </div>
 
         <div className="overflow-x-auto custom-scrollbar">
@@ -332,6 +484,9 @@ export default function AdminTab() {
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Senast aktiv
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Åtgärder
                 </th>
               </tr>
             </thead>
@@ -377,6 +532,30 @@ export default function AdminTab() {
                   <td className="px-4 py-4 text-sm text-muted-foreground" data-testid={`text-user-last-active-${user.id}`}>
                     {getTimeAgo(user.lastActive)}
                   </td>
+                  <td className="px-4 py-4">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditUser(user)}
+                        data-testid={`button-edit-user-${user.id}`}
+                        className="gap-1"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Redigera
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteUser(user)}
+                        data-testid={`button-delete-user-${user.id}`}
+                        className="gap-1 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Ta bort
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -414,6 +593,183 @@ export default function AdminTab() {
               data-testid="button-confirm-clear"
             >
               {clearDataMutation.isPending ? "Tömmer..." : "Töm databas"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={showAddUserDialog} onOpenChange={setShowAddUserDialog}>
+        <DialogContent data-testid="dialog-add-user">
+          <DialogHeader>
+            <DialogTitle>Lägg till användare</DialogTitle>
+            <DialogDescription>
+              Skapa en ny användare för lagerhanteringssystemet
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="add-name">Namn *</Label>
+              <Input
+                id="add-name"
+                value={userForm.name}
+                onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                placeholder="Förnamn Efternamn"
+                data-testid="input-add-user-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-email">E-post</Label>
+              <Input
+                id="add-email"
+                type="email"
+                value={userForm.email}
+                onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                placeholder="namn@example.com"
+                data-testid="input-add-user-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-role">Roll</Label>
+              <Select
+                value={userForm.role}
+                onValueChange={(value) => setUserForm({ ...userForm, role: value })}
+              >
+                <SelectTrigger id="add-role" data-testid="select-add-user-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Lagerarbetare">Lagerarbetare</SelectItem>
+                  <SelectItem value="Lagerchef">Lagerchef</SelectItem>
+                  <SelectItem value="Administratör">Administratör</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="add-active"
+                checked={userForm.isActive}
+                onChange={(e) => setUserForm({ ...userForm, isActive: e.target.checked })}
+                className="w-4 h-4"
+                data-testid="checkbox-add-user-active"
+              />
+              <Label htmlFor="add-active">Aktiv användare</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAddUserDialog(false)}
+              data-testid="button-cancel-add-user"
+            >
+              Avbryt
+            </Button>
+            <Button
+              onClick={handleAddUser}
+              disabled={createUserMutation.isPending}
+              data-testid="button-confirm-add-user"
+            >
+              {createUserMutation.isPending ? "Skapar..." : "Skapa användare"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
+        <DialogContent data-testid="dialog-edit-user">
+          <DialogHeader>
+            <DialogTitle>Redigera användare</DialogTitle>
+            <DialogDescription>
+              Uppdatera användarens information
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Namn *</Label>
+              <Input
+                id="edit-name"
+                value={userForm.name}
+                onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                placeholder="Förnamn Efternamn"
+                data-testid="input-edit-user-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">E-post</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={userForm.email}
+                onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                placeholder="namn@example.com"
+                data-testid="input-edit-user-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-role">Roll</Label>
+              <Select
+                value={userForm.role}
+                onValueChange={(value) => setUserForm({ ...userForm, role: value })}
+              >
+                <SelectTrigger id="edit-role" data-testid="select-edit-user-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Lagerarbetare">Lagerarbetare</SelectItem>
+                  <SelectItem value="Lagerchef">Lagerchef</SelectItem>
+                  <SelectItem value="Administratör">Administratör</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="edit-active"
+                checked={userForm.isActive}
+                onChange={(e) => setUserForm({ ...userForm, isActive: e.target.checked })}
+                className="w-4 h-4"
+                data-testid="checkbox-edit-user-active"
+              />
+              <Label htmlFor="edit-active">Aktiv användare</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowEditUserDialog(false)}
+              data-testid="button-cancel-edit-user"
+            >
+              Avbryt
+            </Button>
+            <Button
+              onClick={handleUpdateUser}
+              disabled={updateUserMutation.isPending}
+              data-testid="button-confirm-edit-user"
+            >
+              {updateUserMutation.isPending ? "Sparar..." : "Spara ändringar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={showDeleteUserDialog} onOpenChange={setShowDeleteUserDialog}>
+        <AlertDialogContent data-testid="dialog-delete-user">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ta bort användare</AlertDialogTitle>
+            <AlertDialogDescription>
+              Är du säker på att du vill ta bort <strong>{selectedUser?.name}</strong>? 
+              Denna åtgärd kan inte ångras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-user">Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteUser}
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={deleteUserMutation.isPending}
+              data-testid="button-confirm-delete-user"
+            >
+              {deleteUserMutation.isPending ? "Tar bort..." : "Ta bort användare"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
