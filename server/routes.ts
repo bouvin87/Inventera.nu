@@ -51,6 +51,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
+  app.patch("/api/users/:id", async (req, res) => {
+    const result = insertUserSchema.partial().safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ message: "Invalid user data" });
+    }
+    const user = await storage.updateUser(req.params.id, result.data);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    broadcast({ type: "user_updated", data: user });
+    res.json(user);
+  });
+
+  app.delete("/api/users/:id", async (req, res) => {
+    const success = await storage.deleteUser(req.params.id);
+    if (!success) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    broadcast({ type: "user_deleted", data: { id: req.params.id } });
+    res.json({ success: true });
+  });
+
   // Articles
   app.get("/api/articles", async (_req, res) => {
     const articles = await storage.getArticles();
