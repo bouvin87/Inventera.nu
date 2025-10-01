@@ -354,18 +354,6 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                           <CheckCircle className="w-4 h-4 mr-1" />
                           Inventerad
                         </Button>
-                      ) : order.pickStatus !== "Plockat" ? (
-                        <Button
-                          disabled
-                          variant="secondary"
-                          size="sm"
-                          data-testid={`button-not-available-${order.id}`}
-                        >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
-                          </svg>
-                          Ej tillgänglig
-                        </Button>
                       ) : (
                         <Button
                           onClick={() => markInventoried.mutate(order.id)}

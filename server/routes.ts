@@ -261,14 +261,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Order line not found" });
     }
 
-    // Validate that only "Plockat" order lines can be inventoried
-    if (orderLine.pickStatus !== "Plockat") {
-      return res.status(400).json({ 
-        message: "Endast plockade orderrader kan inventeras",
-        pickStatus: orderLine.pickStatus 
-      });
-    }
-
     const updated = await storage.updateOrderLine(req.params.id, {
       isInventoried: true,
       inventoriedBy: userId,
