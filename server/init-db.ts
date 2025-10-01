@@ -36,6 +36,7 @@ export function initDatabase() {
       article_number TEXT NOT NULL,
       description TEXT NOT NULL,
       length TEXT NOT NULL,
+      position TEXT,
       quantity INTEGER NOT NULL,
       pick_status TEXT NOT NULL DEFAULT 'Ej plockat',
       is_inventoried INTEGER NOT NULL DEFAULT 0,
@@ -53,6 +54,20 @@ export function initDatabase() {
       created_at TEXT
     );
   `);
+  
+  // Migration: Add position column to order_lines if it doesn't exist
+  try {
+    const columns = sqlite.pragma('table_info(order_lines)') as Array<{ name: string }>;
+    const hasPositionColumn = columns.some((col) => col.name === 'position');
+    
+    if (!hasPositionColumn) {
+      console.log('Adding position column to order_lines table...');
+      sqlite.exec('ALTER TABLE order_lines ADD COLUMN position TEXT;');
+      console.log('Position column added successfully!');
+    }
+  } catch (error) {
+    console.error('Error during migration:', error);
+  }
   
   sqlite.close();
   console.log('Database initialized successfully!');
