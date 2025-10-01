@@ -40,6 +40,15 @@ export const orderLines = pgTable("order_lines", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+export const inventoryCounts = pgTable("inventory_counts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  articleId: varchar("article_id").notNull().references(() => articles.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  count: integer("count").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   lastActive: true,
@@ -57,6 +66,11 @@ export const insertOrderLineSchema = createInsertSchema(orderLines).omit({
   inventoriedAt: true,
 });
 
+export const insertInventoryCountSchema = createInsertSchema(inventoryCounts).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const updateArticleInventorySchema = z.object({
   inventoryCount: z.number().int().min(0),
   notes: z.string().optional(),
@@ -69,3 +83,5 @@ export type Article = typeof articles.$inferSelect;
 export type InsertArticle = z.infer<typeof insertArticleSchema>;
 export type OrderLine = typeof orderLines.$inferSelect;
 export type InsertOrderLine = z.infer<typeof insertOrderLineSchema>;
+export type InventoryCount = typeof inventoryCounts.$inferSelect;
+export type InsertInventoryCount = z.infer<typeof insertInventoryCountSchema>;
