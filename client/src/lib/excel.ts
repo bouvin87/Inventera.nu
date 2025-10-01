@@ -35,11 +35,12 @@ export function downloadArticlesAsExcel(
 export function downloadOrderLinesAsExcel(orderLines: OrderLine[], filename: string = "order_report.xlsx") {
   const data = orderLines.map(line => ({
     "Ordernummer": line.orderNumber,
-    "Artikelnummer": line.articleNumber,
-    "Beskrivning": line.description,
+    "Pos": line.position || "",
+    "art.nr": line.articleNumber,
+    "Besk": line.description,
     "Längd": line.length,
     "Antal": line.quantity,
-    "Plockstatus": line.pickStatus,
+    "Plockstatt": line.pickStatus,
     "Inventerad": line.isInventoried ? "Ja" : "Nej",
   }));
 

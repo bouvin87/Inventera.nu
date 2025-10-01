@@ -73,7 +73,7 @@ export default function ImportModal({ type, open, onClose }: ImportModalProps) {
 
   const expectedColumns = type === "articles"
     ? ["Artikelnummer", "Beskrivning", "Längd", "Lagerplats"]
-    : ["Ordernummer", "Artikelnummer", "Beskrivning", "Längd", "Antal", "Plockstatus"];
+    : ["Ordernummer", "Pos", "art.nr", "Besk", "Längd", "Antal", "Plockstatt"];
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

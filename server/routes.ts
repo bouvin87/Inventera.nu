@@ -229,12 +229,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = utils.sheet_to_json(worksheet);
 
       const orderLines = data.map((row: any) => ({
-        orderNumber: String(row.Ordernr || row.orderNumber || ""),
-        articleNumber: String(row.Artikelnummer || row.articleNumber || ""),
-        description: String(row.Beskrivning || row.description || ""),
+        orderNumber: String(row.Ordernummer || row.Ordernr || row.orderNumber || ""),
+        articleNumber: String(row["art.nr"] || row.Artikelnummer || row.articleNumber || ""),
+        description: String(row.Besk || row.Beskrivning || row.description || ""),
         length: String(row.Längd || row.length || ""),
+        position: row.Pos ? String(row.Pos) : undefined,
         quantity: Number(row.Antal || row.quantity || 0),
-        pickStatus: String(row.Plockstatus || row.pickStatus || "Ej plockat"),
+        pickStatus: String(row.Plockstatt || row.Plockstatus || row.pickStatus || "Ej plockat"),
       }));
 
       // Clear existing order lines
