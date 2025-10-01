@@ -17,7 +17,10 @@ interface AddArticleModalProps {
   onClose: () => void;
 }
 
-export default function AddArticleModal({ open, onClose }: AddArticleModalProps) {
+export default function AddArticleModal({
+  open,
+  onClose,
+}: AddArticleModalProps) {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     articleNumber: "",
@@ -37,13 +40,18 @@ export default function AddArticleModal({ open, onClose }: AddArticleModalProps)
         description: `${formData.articleNumber} har lagts till`,
       });
       onClose();
-      setFormData({ articleNumber: "", description: "", length: "", location: "" });
+      setFormData({
+        articleNumber: "",
+        description: "",
+        length: "",
+        location: "",
+      });
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.articleNumber || !formData.description || !formData.length || !formData.location) {
+    if (!formData.articleNumber || !formData.length) {
       toast({
         title: "Ofullständiga uppgifter",
         description: "Alla fält måste fyllas i",
@@ -71,23 +79,24 @@ export default function AddArticleModal({ open, onClose }: AddArticleModalProps)
               <Input
                 id="articleNumber"
                 value={formData.articleNumber}
-                onChange={(e) => setFormData({ ...formData, articleNumber: e.target.value })}
-                placeholder="t.ex. ART-10239"
+                onChange={(e) =>
+                  setFormData({ ...formData, articleNumber: e.target.value })
+                }
+                placeholder="t.ex. 46152985"
                 className="mt-2"
                 data-testid="input-article-number"
               />
             </div>
 
             <div>
-              <Label htmlFor="description">
-                Beskrivning
-                <span className="text-destructive">*</span>
-              </Label>
+              <Label htmlFor="description">Beskrivning</Label>
               <Input
                 id="description"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="t.ex. Stålrör 40x40mm"
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder="t.ex. C+ 70-0,46"
                 className="mt-2"
                 data-testid="input-description"
               />
@@ -101,23 +110,24 @@ export default function AddArticleModal({ open, onClose }: AddArticleModalProps)
               <Input
                 id="length"
                 value={formData.length}
-                onChange={(e) => setFormData({ ...formData, length: e.target.value })}
-                placeholder="t.ex. 6000mm"
+                onChange={(e) =>
+                  setFormData({ ...formData, length: e.target.value })
+                }
+                placeholder="t.ex. 6000"
                 className="mt-2"
                 data-testid="input-length"
               />
             </div>
 
             <div>
-              <Label htmlFor="location">
-                Lagerplats
-                <span className="text-destructive">*</span>
-              </Label>
+              <Label htmlFor="location">Lagerplats</Label>
               <Input
                 id="location"
                 value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="t.ex. A-12-03"
+                onChange={(e) =>
+                  setFormData({ ...formData, location: e.target.value })
+                }
+                placeholder="t.ex. P.E.P.05.01"
                 className="mt-2"
                 data-testid="input-location"
               />

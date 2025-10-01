@@ -137,14 +137,6 @@ export default function InventoryTab({ userId }: InventoryTabProps) {
         </div>
         <div className="flex gap-3">
           <Button
-            onClick={() => setShowImportModal(true)}
-            variant="secondary"
-            data-testid="button-import-excel"
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            Importera Excel
-          </Button>
-          <Button
             onClick={() => setShowAddModal(true)}
             data-testid="button-add-article"
           >
