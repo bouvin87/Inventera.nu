@@ -1,14 +1,31 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import type { User, Article, OrderLine, InventoryCount } from "@shared/schema";
-import { Upload, Download, Users, Activity } from "lucide-react";
+import { Upload, Download, Users, Activity, Lock, Trash2 } from "lucide-react";
 import { useState } from "react";
 import ImportModal from "./import-modal";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { downloadArticlesAsExcel, downloadOrderLinesAsExcel, downloadDiscrepanciesAsExcel } from "@/lib/excel";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function AdminTab() {
   const [showImportArticles, setShowImportArticles] = useState(false);
   const [showImportOrders, setShowImportOrders] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  const { toast } = useToast();
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
@@ -25,6 +42,65 @@ export default function AdminTab() {
   const { data: inventoryCounts = [] } = useQuery<InventoryCount[]>({
     queryKey: ["/api/inventory-counts"],
   });
+
+  const verifyPasswordMutation = useMutation({
+    mutationFn: async (pwd: string) => {
+      return await apiRequest("/api/admin/verify", {
+        method: "POST",
+        body: JSON.stringify({ password: pwd }),
+      });
+    },
+    onSuccess: () => {
+      setIsAuthenticated(true);
+      setPassword("");
+      toast({
+        title: "Inloggad",
+        description: "Du har tillgång till administrationspanelen",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Felaktigt lösenord",
+        description: "Försök igen",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const clearDataMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("/api/admin/clear-data", {
+        method: "POST",
+        body: JSON.stringify({ password: "admin123" }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/order-lines"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory-counts"] });
+      toast({
+        title: "Databasen har tömts",
+        description: "Alla artiklar, orderrader och inventeringar har tagits bort",
+      });
+      setShowClearDialog(false);
+    },
+    onError: () => {
+      toast({
+        title: "Ett fel uppstod",
+        description: "Kunde inte tömma databasen",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    verifyPasswordMutation.mutate(password);
+  };
+
+  const handleClearData = () => {
+    clearDataMutation.mutate();
+  };
 
   const handleExportInventory = () => {
     downloadArticlesAsExcel(articles, inventoryCounts);
@@ -51,11 +127,64 @@ export default function AdminTab() {
     return `${days} dag${days > 1 ? "ar" : ""} sedan`;
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-full max-w-md">
+          <div className="bg-card rounded-lg border border-border p-8">
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <Lock className="w-8 h-8 text-primary" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-center mb-2" data-testid="text-admin-login-title">
+              Administrationspanel
+            </h2>
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              Ange lösenord för att få åtkomst
+            </p>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <Input
+                  type="password"
+                  placeholder="Lösenord"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  data-testid="input-admin-password"
+                  className="w-full"
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={verifyPasswordMutation.isPending || !password}
+                data-testid="button-admin-login"
+              >
+                {verifyPasswordMutation.isPending ? "Verifierar..." : "Logga in"}
+              </Button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-1" data-testid="text-admin-title">Administration</h2>
-        <p className="text-sm text-muted-foreground">Hantera användare, import och exportera rapporter</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold mb-1" data-testid="text-admin-title">Administration</h2>
+          <p className="text-sm text-muted-foreground">Hantera användare, import och exportera rapporter</p>
+        </div>
+        <Button
+          variant="destructive"
+          onClick={() => setShowClearDialog(true)}
+          data-testid="button-clear-database"
+          className="gap-2"
+        >
+          <Trash2 className="w-4 h-4" />
+          Töm databas
+        </Button>
       </div>
 
       {/* Admin Cards Grid */}
@@ -272,6 +401,29 @@ export default function AdminTab() {
         open={showImportOrders}
         onClose={() => setShowImportOrders(false)}
       />
+
+      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <AlertDialogContent data-testid="dialog-clear-database">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Töm databas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Detta kommer att ta bort alla artiklar, orderrader och inventeringar permanent. 
+              Användare påverkas inte. Är du säker på att du vill fortsätta?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-clear">Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearData}
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={clearDataMutation.isPending}
+              data-testid="button-confirm-clear"
+            >
+              {clearDataMutation.isPending ? "Tömmer..." : "Töm databas"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
