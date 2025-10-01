@@ -26,7 +26,7 @@ Preferred communication style: Simple, everyday language.
 
 **Framework**: Express.js running on Node.js with TypeScript
 
-**Data Layer**: In-memory storage implementation (`MemStorage` class) that simulates database operations. The interface (`IStorage`) is designed to be swappable with a real database implementation.
+**Data Layer**: PostgreSQL database with Drizzle ORM (`DatabaseStorage` class) implementing the `IStorage` interface. Data persists between server restarts. Default users are automatically seeded on startup if not present.
 
 **API Design**: RESTful endpoints under `/api` prefix for CRUD operations on users, articles, inventory counts, and order lines
 - Inventory count endpoints: GET/POST/PATCH/DELETE on `/api/articles/:articleId/inventory` and `/api/inventory-counts/:id`
