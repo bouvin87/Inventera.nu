@@ -271,6 +271,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(updated);
   });
 
+  app.delete("/api/order-lines/:id/inventory", async (req, res) => {
+    const orderLine = await storage.getOrderLine(req.params.id);
+    if (!orderLine) {
+      return res.status(404).json({ message: "Order line not found" });
+    }
+
+    const updated = await storage.updateOrderLine(req.params.id, {
+      isInventoried: false,
+      inventoriedBy: null,
+      inventoriedAt: null,
+    });
+
+    broadcast({ type: "order_line_inventory_undone", data: updated });
+    res.json(updated);
+  });
+
   // Export endpoints
   app.get("/api/export/inventory", async (_req, res) => {
     const articles = await storage.getArticles();

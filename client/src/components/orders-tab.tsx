@@ -39,6 +39,19 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
     },
   });
 
+  const undoInventory = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/order-lines/${id}/inventory`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/order-lines"] });
+      toast({
+        title: "Inventering ångrad",
+        description: "Orderraden är inte längre inventerad",
+      });
+    },
+  });
+
   const filteredAndSortedOrders = useMemo(() => {
     let filtered = orderLines.filter((order) => {
       if (!searchTerm) return true;
@@ -346,13 +359,13 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                     <td className="px-4 py-4 text-right">
                       {order.isInventoried ? (
                         <Button
-                          disabled
+                          onClick={() => undoInventory.mutate(order.id)}
                           variant="secondary"
                           size="sm"
-                          data-testid={`button-inventoried-${order.id}`}
+                          data-testid={`button-undo-inventory-${order.id}`}
                         >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Inventerad
+                          <X className="w-4 h-4 mr-1" />
+                          Ångra inventering
                         </Button>
                       ) : (
                         <Button
