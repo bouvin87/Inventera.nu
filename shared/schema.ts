@@ -1,52 +1,52 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
   name: text("name").notNull(),
   role: text("role").notNull().default("Lagerarbetare"),
   email: text("email"),
-  isActive: boolean("is_active").notNull().default(true),
-  lastActive: timestamp("last_active").default(sql`now()`),
+  isActive: integer("is_active", { mode: 'boolean' }).notNull().default(true),
+  lastActive: text("last_active"),
 });
 
-export const articles = pgTable("articles", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const articles = sqliteTable("articles", {
+  id: text("id").primaryKey(),
   articleNumber: text("article_number").notNull().unique(),
   description: text("description").notNull(),
   length: text("length").notNull(),
   location: text("location").notNull(),
   inventoryCount: integer("inventory_count"),
   notes: text("notes"),
-  isInventoried: boolean("is_inventoried").notNull().default(false),
-  lastInventoriedBy: varchar("last_inventoried_by").references(() => users.id),
-  lastInventoriedAt: timestamp("last_inventoried_at"),
-  createdAt: timestamp("created_at").default(sql`now()`),
+  isInventoried: integer("is_inventoried", { mode: 'boolean' }).notNull().default(false),
+  lastInventoriedBy: text("last_inventoried_by").references(() => users.id),
+  lastInventoriedAt: text("last_inventoried_at"),
+  createdAt: text("created_at"),
 });
 
-export const orderLines = pgTable("order_lines", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+export const orderLines = sqliteTable("order_lines", {
+  id: text("id").primaryKey(),
   orderNumber: text("order_number").notNull(),
   articleNumber: text("article_number").notNull(),
   description: text("description").notNull(),
   length: text("length").notNull(),
   quantity: integer("quantity").notNull(),
   pickStatus: text("pick_status").notNull().default("Ej plockat"),
-  isInventoried: boolean("is_inventoried").notNull().default(false),
-  inventoriedBy: varchar("inventoried_by").references(() => users.id),
-  inventoriedAt: timestamp("inventoried_at"),
-  createdAt: timestamp("created_at").default(sql`now()`),
+  isInventoried: integer("is_inventoried", { mode: 'boolean' }).notNull().default(false),
+  inventoriedBy: text("inventoried_by").references(() => users.id),
+  inventoriedAt: text("inventoried_at"),
+  createdAt: text("created_at"),
 });
 
-export const inventoryCounts = pgTable("inventory_counts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  articleId: varchar("article_id").notNull().references(() => articles.id, { onDelete: 'cascade' }),
-  userId: varchar("user_id").notNull().references(() => users.id),
+export const inventoryCounts = sqliteTable("inventory_counts", {
+  id: text("id").primaryKey(),
+  articleId: text("article_id").notNull().references(() => articles.id, { onDelete: 'cascade' }),
+  userId: text("user_id").notNull().references(() => users.id),
   count: integer("count").notNull(),
   notes: text("notes"),
-  createdAt: timestamp("created_at").default(sql`now()`),
+  createdAt: text("created_at"),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({

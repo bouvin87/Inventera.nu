@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import crypto from "crypto";
 
 export async function seedDatabase() {
   const defaultUsers = [
@@ -14,7 +15,11 @@ export async function seedDatabase() {
     const existing = await db.select().from(users).where(eq(users.name, user.name));
     
     if (existing.length === 0) {
-      await db.insert(users).values(user);
+      await db.insert(users).values({
+        ...user,
+        id: crypto.randomUUID(),
+        lastActive: new Date().toISOString()
+      });
       console.log(`Created user: ${user.name}`);
     }
   }

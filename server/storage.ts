@@ -259,9 +259,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
+    const id = randomUUID();
     const [user] = await db
       .insert(users)
-      .values(insertUser)
+      .values({ 
+        ...insertUser, 
+        id,
+        lastActive: new Date().toISOString() 
+      })
       .returning();
     return user;
   }
@@ -269,7 +274,7 @@ export class DatabaseStorage implements IStorage {
   async updateUserActivity(id: string): Promise<void> {
     await db
       .update(users)
-      .set({ lastActive: new Date(), isActive: true })
+      .set({ lastActive: new Date().toISOString(), isActive: true })
       .where(eq(users.id, id));
   }
 
@@ -284,9 +289,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createArticle(insertArticle: InsertArticle): Promise<Article> {
+    const id = randomUUID();
     const [article] = await db
       .insert(articles)
-      .values(insertArticle)
+      .values({ 
+        ...insertArticle, 
+        id,
+        createdAt: new Date().toISOString() 
+      })
       .returning();
     return article;
   }
@@ -295,7 +305,11 @@ export class DatabaseStorage implements IStorage {
     if (insertArticles.length === 0) return [];
     const created = await db
       .insert(articles)
-      .values(insertArticles)
+      .values(insertArticles.map(article => ({ 
+        ...article, 
+        id: randomUUID(),
+        createdAt: new Date().toISOString() 
+      })))
       .returning();
     return created;
   }
@@ -324,9 +338,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createOrderLine(insertOrderLine: InsertOrderLine): Promise<OrderLine> {
+    const id = randomUUID();
     const [orderLine] = await db
       .insert(orderLines)
-      .values(insertOrderLine)
+      .values({ 
+        ...insertOrderLine, 
+        id,
+        createdAt: new Date().toISOString() 
+      })
       .returning();
     return orderLine;
   }
@@ -335,7 +354,11 @@ export class DatabaseStorage implements IStorage {
     if (insertOrderLines.length === 0) return [];
     const created = await db
       .insert(orderLines)
-      .values(insertOrderLines)
+      .values(insertOrderLines.map(orderLine => ({ 
+        ...orderLine, 
+        id: randomUUID(),
+        createdAt: new Date().toISOString() 
+      })))
       .returning();
     return created;
   }
@@ -363,9 +386,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInventoryCount(insertInventoryCount: InsertInventoryCount): Promise<InventoryCount> {
+    const id = randomUUID();
     const [inventoryCount] = await db
       .insert(inventoryCounts)
-      .values(insertInventoryCount)
+      .values({ 
+        ...insertInventoryCount, 
+        id,
+        createdAt: new Date().toISOString() 
+      })
       .returning();
     return inventoryCount;
   }
