@@ -249,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const updated = await storage.updateOrderLine(req.params.id, {
       isInventoried: true,
       inventoriedBy: userId,
-      inventoriedAt: new Date(),
+      inventoriedAt: new Date().toISOString(),
     });
 
     broadcast({ type: "order_line_inventoried", data: updated });

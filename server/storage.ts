@@ -46,6 +46,9 @@ export interface IStorage {
   createInventoryCount(inventoryCount: InsertInventoryCount): Promise<InventoryCount>;
   updateInventoryCount(id: string, updates: Partial<InventoryCount>): Promise<InventoryCount | undefined>;
   deleteInventoryCount(id: string): Promise<boolean>;
+
+  // Admin
+  clearAllData(): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -240,6 +243,12 @@ export class MemStorage implements IStorage {
   async deleteInventoryCount(id: string): Promise<boolean> {
     return this.inventoryCounts.delete(id);
   }
+
+  async clearAllData(): Promise<void> {
+    this.articles.clear();
+    this.orderLines.clear();
+    this.inventoryCounts.clear();
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -413,6 +422,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(inventoryCounts.id, id))
       .returning();
     return result.length > 0;
+  }
+
+  async clearAllData(): Promise<void> {
+    await db.delete(inventoryCounts);
+    await db.delete(orderLines);
+    await db.delete(articles);
   }
 }
 
