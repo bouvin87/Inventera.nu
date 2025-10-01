@@ -5,6 +5,8 @@ import {
   type InsertArticle,
   type OrderLine,
   type InsertOrderLine,
+  type InventoryCount,
+  type InsertInventoryCount,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -31,17 +33,26 @@ export interface IStorage {
   createOrderLines(orderLines: InsertOrderLine[]): Promise<OrderLine[]>;
   updateOrderLine(id: string, orderLine: Partial<OrderLine>): Promise<OrderLine | undefined>;
   deleteAllOrderLines(): Promise<void>;
+
+  // Inventory Counts
+  getInventoryCounts(articleId: string): Promise<InventoryCount[]>;
+  getAllInventoryCounts(): Promise<InventoryCount[]>;
+  createInventoryCount(inventoryCount: InsertInventoryCount): Promise<InventoryCount>;
+  updateInventoryCount(id: string, updates: Partial<InventoryCount>): Promise<InventoryCount | undefined>;
+  deleteInventoryCount(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private articles: Map<string, Article>;
   private orderLines: Map<string, OrderLine>;
+  private inventoryCounts: Map<string, InventoryCount>;
 
   constructor() {
     this.users = new Map();
     this.articles = new Map();
     this.orderLines = new Map();
+    this.inventoryCounts = new Map();
 
     // Initialize with default users
     const defaultUsers: InsertUser[] = [
@@ -186,6 +197,40 @@ export class MemStorage implements IStorage {
 
   async deleteAllOrderLines(): Promise<void> {
     this.orderLines.clear();
+  }
+
+  // Inventory Counts
+  async getInventoryCounts(articleId: string): Promise<InventoryCount[]> {
+    return Array.from(this.inventoryCounts.values()).filter(ic => ic.articleId === articleId);
+  }
+
+  async getAllInventoryCounts(): Promise<InventoryCount[]> {
+    return Array.from(this.inventoryCounts.values());
+  }
+
+  async createInventoryCount(insertInventoryCount: InsertInventoryCount): Promise<InventoryCount> {
+    const id = randomUUID();
+    const inventoryCount: InventoryCount = {
+      ...insertInventoryCount,
+      id,
+      notes: insertInventoryCount.notes ?? null,
+      createdAt: new Date(),
+    };
+    this.inventoryCounts.set(id, inventoryCount);
+    return inventoryCount;
+  }
+
+  async updateInventoryCount(id: string, updates: Partial<InventoryCount>): Promise<InventoryCount | undefined> {
+    const inventoryCount = this.inventoryCounts.get(id);
+    if (!inventoryCount) return undefined;
+
+    const updated = { ...inventoryCount, ...updates };
+    this.inventoryCounts.set(id, updated);
+    return updated;
+  }
+
+  async deleteInventoryCount(id: string): Promise<boolean> {
+    return this.inventoryCounts.delete(id);
   }
 }
 
