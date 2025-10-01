@@ -28,7 +28,9 @@ Preferred communication style: Simple, everyday language.
 
 **Data Layer**: In-memory storage implementation (`MemStorage` class) that simulates database operations. The interface (`IStorage`) is designed to be swappable with a real database implementation.
 
-**API Design**: RESTful endpoints under `/api` prefix for CRUD operations on users, articles, and order lines
+**API Design**: RESTful endpoints under `/api` prefix for CRUD operations on users, articles, inventory counts, and order lines
+- Inventory count endpoints: GET/POST/PATCH/DELETE on `/api/articles/:articleId/inventory` and `/api/inventory-counts/:id`
+- Full CRUD support with Zod validation on request bodies
 
 **Real-time Communication**: WebSocket server on `/ws` path that broadcasts updates to all connected clients when data mutations occur
 
@@ -43,6 +45,12 @@ Preferred communication style: Simple, everyday language.
 
 **Articles**: Inventory items that can be counted
 - Fields: id, articleNumber, description, length, location, inventoryCount, notes, isInventoried, lastInventoriedBy, lastInventoriedAt
+- **Note**: inventoryCount, notes, isInventoried, lastInventoriedBy, lastInventoriedAt are deprecated in favor of separate InventoryCount records
+
+**InventoryCounts**: Individual inventory counts performed by users (multiple counts per article)
+- Fields: id, articleId (foreign key), userId, count, notes, createdAt
+- Each article can have multiple inventory counts from different users
+- Supports expandable rows in UI showing all counts with user information and totals
 
 **Order Lines**: Items from orders that need to be picked and verified
 - Fields: id, orderNumber, articleNumber, description, length, quantity, pickStatus, isInventoried, inventoriedBy, inventoriedAt
@@ -82,6 +90,9 @@ Preferred communication style: Simple, everyday language.
 **Optimistic UI**: React Query's mutation system with cache invalidation for responsive user experience
 
 **Import/Export**: Excel-based data exchange for bulk operations, allowing warehouse managers to prepare data offline
+- **Export format**: One row per inventory count (not per article) with columns: Artikelnummer, Beskrivning, Längd, Lagerplats, Inventerat antal, Användare, Datum, Anteckningar
+- Inventory export includes all counts with user and timestamp information
+- Discrepancy export filters to only counts with notes
 
 **Activity Tracking**: Last active timestamps on users to monitor who's currently working
 
