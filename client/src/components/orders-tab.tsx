@@ -1,19 +1,26 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { OrderLine } from "@shared/schema";
-import { Upload, CheckCircle, Clock } from "lucide-react";
+import { Upload, CheckCircle, Clock, ArrowUpDown, Search, X } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ImportModal from "./import-modal";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface OrdersTabProps {
   userId: string;
 }
 
+type SortField = "orderNumber" | "articleNumber" | "description" | "length" | "position" | "quantity" | "pickStatus";
+type SortOrder = "asc" | "desc";
+
 export default function OrdersTab({ userId }: OrdersTabProps) {
   const { toast } = useToast();
   const [showImportModal, setShowImportModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortField, setSortField] = useState<SortField>("orderNumber");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
   const { data: orderLines = [], isLoading } = useQuery<OrderLine[]>({
     queryKey: ["/api/order-lines"],
@@ -32,10 +39,56 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
     },
   });
 
+  const filteredAndSortedOrders = useMemo(() => {
+    let filtered = orderLines.filter((order) => {
+      if (!searchTerm) return true;
+      const search = searchTerm.toLowerCase();
+      return (
+        order.orderNumber?.toLowerCase().includes(search) ||
+        order.articleNumber?.toLowerCase().includes(search) ||
+        order.description?.toLowerCase().includes(search) ||
+        order.length?.toLowerCase().includes(search) ||
+        order.position?.toLowerCase().includes(search) ||
+        order.pickStatus?.toLowerCase().includes(search)
+      );
+    });
+
+    filtered.sort((a, b) => {
+      const aVal = a[sortField];
+      const bVal = b[sortField];
+      
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return sortOrder === "asc" ? 1 : -1;
+      if (bVal == null) return sortOrder === "asc" ? -1 : 1;
+      
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+      }
+      
+      const aStr = String(aVal).toLowerCase();
+      const bStr = String(bVal).toLowerCase();
+      
+      if (aStr < bStr) return sortOrder === "asc" ? -1 : 1;
+      if (aStr > bStr) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [orderLines, searchTerm, sortField, sortOrder]);
+
   const stats = {
     total: orderLines.length,
     inventoried: orderLines.filter((line) => line.isInventoried).length,
     remaining: orderLines.filter((line) => !line.isInventoried).length,
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
   };
 
   if (isLoading) {
@@ -63,6 +116,30 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
             <Upload className="w-4 h-4 mr-2" />
             Importera orderrader
           </Button>
+        </div>
+      </div>
+
+      {/* Search and Filter */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Input
+            type="text"
+            placeholder="Sök efter ordernr, artikelnr, beskrivning, längd, position..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-10"
+            data-testid="input-search-orders"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              data-testid="button-clear-search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -111,23 +188,75 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
           <table className="w-full" data-testid="table-orders">
             <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Ordernr
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
+                  onClick={() => handleSort("orderNumber")}
+                  data-testid="header-order-number"
+                >
+                  <div className="flex items-center gap-1">
+                    Ordernr
+                    <ArrowUpDown className={`w-3 h-3 ${sortField === "orderNumber" ? "text-primary" : ""}`} />
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Artikelnr
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
+                  onClick={() => handleSort("articleNumber")}
+                  data-testid="header-article-number"
+                >
+                  <div className="flex items-center gap-1">
+                    Artikelnr
+                    <ArrowUpDown className={`w-3 h-3 ${sortField === "articleNumber" ? "text-primary" : ""}`} />
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Beskrivning
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
+                  onClick={() => handleSort("description")}
+                  data-testid="header-description"
+                >
+                  <div className="flex items-center gap-1">
+                    Beskrivning
+                    <ArrowUpDown className={`w-3 h-3 ${sortField === "description" ? "text-primary" : ""}`} />
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Längd
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
+                  onClick={() => handleSort("length")}
+                  data-testid="header-length"
+                >
+                  <div className="flex items-center gap-1">
+                    Längd
+                    <ArrowUpDown className={`w-3 h-3 ${sortField === "length" ? "text-primary" : ""}`} />
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Antal
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
+                  onClick={() => handleSort("position")}
+                  data-testid="header-position"
+                >
+                  <div className="flex items-center gap-1">
+                    Pos
+                    <ArrowUpDown className={`w-3 h-3 ${sortField === "position" ? "text-primary" : ""}`} />
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Plockstatus
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
+                  onClick={() => handleSort("quantity")}
+                  data-testid="header-quantity"
+                >
+                  <div className="flex items-center gap-1">
+                    Antal
+                    <ArrowUpDown className={`w-3 h-3 ${sortField === "quantity" ? "text-primary" : ""}`} />
+                  </div>
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
+                  onClick={() => handleSort("pickStatus")}
+                  data-testid="header-pick-status"
+                >
+                  <div className="flex items-center gap-1">
+                    Plockstatus
+                    <ArrowUpDown className={`w-3 h-3 ${sortField === "pickStatus" ? "text-primary" : ""}`} />
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Åtgärder
@@ -135,14 +264,16 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {orderLines.length === 0 ? (
+              {filteredAndSortedOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
-                    Inga orderrader hittades. Importera orderrader från Excel.
+                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                    {orderLines.length === 0 
+                      ? "Inga orderrader hittades. Importera orderrader från Excel."
+                      : "Inga orderrader matchar sökningen."}
                   </td>
                 </tr>
               ) : (
-                orderLines.map((order) => (
+                filteredAndSortedOrders.map((order) => (
                   <tr
                     key={order.id}
                     className={`hover:bg-muted/50 transition-colors ${order.isInventoried ? "bg-accent/5" : ""}`}
@@ -159,6 +290,9 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                     </td>
                     <td className="px-4 py-4 text-sm font-mono" data-testid={`text-length-${order.id}`}>
                       {order.length}
+                    </td>
+                    <td className="px-4 py-4 text-sm font-mono" data-testid={`text-position-${order.id}`}>
+                      {order.position || "-"}
                     </td>
                     <td className="px-4 py-4">
                       <span className="inline-flex items-center justify-center w-8 h-8 bg-secondary rounded-full text-sm font-semibold">
