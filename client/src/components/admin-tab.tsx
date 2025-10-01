@@ -45,10 +45,7 @@ export default function AdminTab() {
 
   const verifyPasswordMutation = useMutation({
     mutationFn: async (pwd: string) => {
-      return await apiRequest("/api/admin/verify", {
-        method: "POST",
-        body: JSON.stringify({ password: pwd }),
-      });
+      return await apiRequest("POST", "/api/admin/verify", { password: pwd });
     },
     onSuccess: () => {
       setIsAuthenticated(true);
@@ -69,10 +66,7 @@ export default function AdminTab() {
 
   const clearDataMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/admin/clear-data", {
-        method: "POST",
-        body: JSON.stringify({ password: "admin123" }),
-      });
+      return await apiRequest("POST", "/api/admin/clear-data", { password: "admin123" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
@@ -114,7 +108,7 @@ export default function AdminTab() {
     downloadDiscrepanciesAsExcel(articles, inventoryCounts);
   };
 
-  const getTimeAgo = (date: Date | null) => {
+  const getTimeAgo = (date: string | null) => {
     if (!date) return "Aldrig";
     const now = new Date();
     const diff = now.getTime() - new Date(date).getTime();
