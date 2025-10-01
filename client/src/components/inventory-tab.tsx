@@ -1,7 +1,7 @@
 import { useState, useMemo, Fragment } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { Article, InventoryCount } from "@shared/schema";
-import { Upload, Plus, ChevronDown, ChevronRight, Edit2, Trash2 } from "lucide-react";
+import { Upload, Plus, ChevronDown, ChevronRight, Edit2, Trash2, Search, X } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import CountModal from "./count-modal";
@@ -18,12 +18,7 @@ interface InventoryTabProps {
 
 export default function InventoryTab({ userId }: InventoryTabProps) {
   const { toast } = useToast();
-  const [filters, setFilters] = useState({
-    articleNumber: "",
-    description: "",
-    length: "",
-    location: "",
-  });
+  const [searchTerm, setSearchTerm] = useState("");
   const [sortColumn, setSortColumn] = useState<keyof Article | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
@@ -102,11 +97,13 @@ export default function InventoryTab({ userId }: InventoryTabProps) {
 
   const filteredAndSortedArticles = articles
     .filter((article) => {
+      if (!searchTerm) return true;
+      const search = searchTerm.toLowerCase();
       return (
-        article.articleNumber.toLowerCase().includes(filters.articleNumber.toLowerCase()) &&
-        article.description.toLowerCase().includes(filters.description.toLowerCase()) &&
-        article.length.toLowerCase().includes(filters.length.toLowerCase()) &&
-        article.location.toLowerCase().includes(filters.location.toLowerCase())
+        article.articleNumber.toLowerCase().includes(search) ||
+        article.description.toLowerCase().includes(search) ||
+        article.length.toLowerCase().includes(search) ||
+        article.location.toLowerCase().includes(search)
       );
     })
     .sort((a, b) => {
@@ -146,61 +143,27 @@ export default function InventoryTab({ userId }: InventoryTabProps) {
         </div>
       </div>
 
-      {/* Filter Panel */}
-      <div className="bg-card rounded-lg border border-border p-4 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold flex items-center gap-2">
-            <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-            </svg>
-            Filtrera artiklar
-          </h3>
-          <button
-            onClick={() => setFilters({ articleNumber: "", description: "", length: "", location: "" })}
-            className="text-sm text-primary hover:underline"
-            data-testid="button-clear-filters"
-          >
-            Rensa alla filter
-          </button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Artikelnummer</label>
-            <Input
-              value={filters.articleNumber}
-              onChange={(e) => setFilters({ ...filters, articleNumber: e.target.value })}
-              placeholder="Sök artikelnr..."
-              data-testid="input-filter-article-number"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Beskrivning</label>
-            <Input
-              value={filters.description}
-              onChange={(e) => setFilters({ ...filters, description: e.target.value })}
-              placeholder="Sök beskrivning..."
-              data-testid="input-filter-description"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Längd</label>
-            <Input
-              value={filters.length}
-              onChange={(e) => setFilters({ ...filters, length: e.target.value })}
-              placeholder="Sök längd..."
-              data-testid="input-filter-length"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Lagerplats</label>
-            <Input
-              value={filters.location}
-              onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-              placeholder="Sök lagerplats..."
-              data-testid="input-filter-location"
-            />
-          </div>
+      {/* Search */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Input
+            type="text"
+            placeholder="Sök efter artikelnr, beskrivning, längd, lagerplats..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-10"
+            data-testid="input-search-articles"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              data-testid="button-clear-search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
