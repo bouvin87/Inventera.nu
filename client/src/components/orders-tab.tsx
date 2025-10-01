@@ -54,23 +54,45 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
     });
 
     filtered.sort((a, b) => {
+      // Primary sort by the selected field
       const aVal = a[sortField];
       const bVal = b[sortField];
       
-      if (aVal == null && bVal == null) return 0;
+      if (aVal == null && bVal == null) {
+        // If both values are null, use default sorting (orderNumber + position)
+        const orderNumA = a.orderNumber?.toLowerCase() || "";
+        const orderNumB = b.orderNumber?.toLowerCase() || "";
+        if (orderNumA !== orderNumB) {
+          return orderNumA < orderNumB ? -1 : 1;
+        }
+        const posA = a.position?.toLowerCase() || "";
+        const posB = b.position?.toLowerCase() || "";
+        return posA < posB ? -1 : 1;
+      }
+      
       if (aVal == null) return sortOrder === "asc" ? 1 : -1;
       if (bVal == null) return sortOrder === "asc" ? -1 : 1;
       
       if (typeof aVal === "number" && typeof bVal === "number") {
-        return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+        const result = aVal - bVal;
+        if (result !== 0) return sortOrder === "asc" ? result : -result;
+      } else {
+        const aStr = String(aVal).toLowerCase();
+        const bStr = String(bVal).toLowerCase();
+        
+        if (aStr < bStr) return sortOrder === "asc" ? -1 : 1;
+        if (aStr > bStr) return sortOrder === "asc" ? 1 : -1;
       }
       
-      const aStr = String(aVal).toLowerCase();
-      const bStr = String(bVal).toLowerCase();
-      
-      if (aStr < bStr) return sortOrder === "asc" ? -1 : 1;
-      if (aStr > bStr) return sortOrder === "asc" ? 1 : -1;
-      return 0;
+      // Secondary sort by orderNumber + position when primary values are equal
+      const orderNumA = a.orderNumber?.toLowerCase() || "";
+      const orderNumB = b.orderNumber?.toLowerCase() || "";
+      if (orderNumA !== orderNumB) {
+        return orderNumA < orderNumB ? -1 : 1;
+      }
+      const posA = a.position?.toLowerCase() || "";
+      const posB = b.position?.toLowerCase() || "";
+      return posA < posB ? -1 : 1;
     });
 
     return filtered;
@@ -200,6 +222,16 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                 </th>
                 <th 
                   className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
+                  onClick={() => handleSort("position")}
+                  data-testid="header-position"
+                >
+                  <div className="flex items-center gap-1">
+                    Pos
+                    <ArrowUpDown className={`w-3 h-3 ${sortField === "position" ? "text-primary" : ""}`} />
+                  </div>
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
                   onClick={() => handleSort("articleNumber")}
                   data-testid="header-article-number"
                 >
@@ -226,16 +258,6 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                   <div className="flex items-center gap-1">
                     Längd
                     <ArrowUpDown className={`w-3 h-3 ${sortField === "length" ? "text-primary" : ""}`} />
-                  </div>
-                </th>
-                <th 
-                  className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors"
-                  onClick={() => handleSort("position")}
-                  data-testid="header-position"
-                >
-                  <div className="flex items-center gap-1">
-                    Pos
-                    <ArrowUpDown className={`w-3 h-3 ${sortField === "position" ? "text-primary" : ""}`} />
                   </div>
                 </th>
                 <th 
@@ -282,6 +304,9 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                     <td className="px-4 py-4 text-sm font-mono font-medium" data-testid={`text-order-number-${order.id}`}>
                       {order.orderNumber}
                     </td>
+                    <td className="px-4 py-4 text-sm font-mono" data-testid={`text-position-${order.id}`}>
+                      {order.position || "-"}
+                    </td>
                     <td className="px-4 py-4 text-sm font-mono" data-testid={`text-article-number-${order.id}`}>
                       {order.articleNumber}
                     </td>
@@ -290,9 +315,6 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
                     </td>
                     <td className="px-4 py-4 text-sm font-mono" data-testid={`text-length-${order.id}`}>
                       {order.length}
-                    </td>
-                    <td className="px-4 py-4 text-sm font-mono" data-testid={`text-position-${order.id}`}>
-                      {order.position || "-"}
                     </td>
                     <td className="px-4 py-4">
                       <span className="inline-flex items-center justify-center w-8 h-8 bg-secondary rounded-full text-sm font-semibold">
