@@ -7,8 +7,14 @@ import {
   type InsertOrderLine,
   type InventoryCount,
   type InsertInventoryCount,
+  users,
+  articles,
+  orderLines,
+  inventoryCounts,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -236,4 +242,150 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  // Users
+  async getUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByName(name: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.name, name));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async updateUserActivity(id: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ lastActive: new Date(), isActive: true })
+      .where(eq(users.id, id));
+  }
+
+  // Articles
+  async getArticles(): Promise<Article[]> {
+    return await db.select().from(articles);
+  }
+
+  async getArticle(id: string): Promise<Article | undefined> {
+    const [article] = await db.select().from(articles).where(eq(articles.id, id));
+    return article || undefined;
+  }
+
+  async createArticle(insertArticle: InsertArticle): Promise<Article> {
+    const [article] = await db
+      .insert(articles)
+      .values(insertArticle)
+      .returning();
+    return article;
+  }
+
+  async createArticles(insertArticles: InsertArticle[]): Promise<Article[]> {
+    if (insertArticles.length === 0) return [];
+    const created = await db
+      .insert(articles)
+      .values(insertArticles)
+      .returning();
+    return created;
+  }
+
+  async updateArticle(id: string, updates: Partial<Article>): Promise<Article | undefined> {
+    const [updated] = await db
+      .update(articles)
+      .set(updates)
+      .where(eq(articles.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteAllArticles(): Promise<void> {
+    await db.delete(articles);
+  }
+
+  // Order Lines
+  async getOrderLines(): Promise<OrderLine[]> {
+    return await db.select().from(orderLines);
+  }
+
+  async getOrderLine(id: string): Promise<OrderLine | undefined> {
+    const [orderLine] = await db.select().from(orderLines).where(eq(orderLines.id, id));
+    return orderLine || undefined;
+  }
+
+  async createOrderLine(insertOrderLine: InsertOrderLine): Promise<OrderLine> {
+    const [orderLine] = await db
+      .insert(orderLines)
+      .values(insertOrderLine)
+      .returning();
+    return orderLine;
+  }
+
+  async createOrderLines(insertOrderLines: InsertOrderLine[]): Promise<OrderLine[]> {
+    if (insertOrderLines.length === 0) return [];
+    const created = await db
+      .insert(orderLines)
+      .values(insertOrderLines)
+      .returning();
+    return created;
+  }
+
+  async updateOrderLine(id: string, updates: Partial<OrderLine>): Promise<OrderLine | undefined> {
+    const [updated] = await db
+      .update(orderLines)
+      .set(updates)
+      .where(eq(orderLines.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteAllOrderLines(): Promise<void> {
+    await db.delete(orderLines);
+  }
+
+  // Inventory Counts
+  async getInventoryCounts(articleId: string): Promise<InventoryCount[]> {
+    return await db.select().from(inventoryCounts).where(eq(inventoryCounts.articleId, articleId));
+  }
+
+  async getAllInventoryCounts(): Promise<InventoryCount[]> {
+    return await db.select().from(inventoryCounts);
+  }
+
+  async createInventoryCount(insertInventoryCount: InsertInventoryCount): Promise<InventoryCount> {
+    const [inventoryCount] = await db
+      .insert(inventoryCounts)
+      .values(insertInventoryCount)
+      .returning();
+    return inventoryCount;
+  }
+
+  async updateInventoryCount(id: string, updates: Partial<InventoryCount>): Promise<InventoryCount | undefined> {
+    const [updated] = await db
+      .update(inventoryCounts)
+      .set(updates)
+      .where(eq(inventoryCounts.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteInventoryCount(id: string): Promise<boolean> {
+    const result = await db
+      .delete(inventoryCounts)
+      .where(eq(inventoryCounts.id, id))
+      .returning();
+    return result.length > 0;
+  }
+}
+
+export const storage = new DatabaseStorage();
