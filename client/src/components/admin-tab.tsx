@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { User, Article, OrderLine } from "@shared/schema";
+import type { User, Article, OrderLine, InventoryCount } from "@shared/schema";
 import { Upload, Download, Users, Activity } from "lucide-react";
 import { useState } from "react";
 import ImportModal from "./import-modal";
@@ -22,8 +22,12 @@ export default function AdminTab() {
     queryKey: ["/api/order-lines"],
   });
 
+  const { data: inventoryCounts = [] } = useQuery<InventoryCount[]>({
+    queryKey: ["/api/inventory-counts"],
+  });
+
   const handleExportInventory = () => {
-    downloadArticlesAsExcel(articles);
+    downloadArticlesAsExcel(articles, inventoryCounts);
   };
 
   const handleExportOrders = () => {
@@ -31,7 +35,7 @@ export default function AdminTab() {
   };
 
   const handleExportDiscrepancies = () => {
-    downloadDiscrepanciesAsExcel(articles);
+    downloadDiscrepanciesAsExcel(articles, inventoryCounts);
   };
 
   const getTimeAgo = (date: Date | null) => {

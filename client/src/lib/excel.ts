@@ -1,20 +1,34 @@
 import * as XLSX from "xlsx";
-import type { Article, OrderLine } from "@shared/schema";
+import type { Article, OrderLine, InventoryCount } from "@shared/schema";
+import { format } from "date-fns";
+import { sv } from "date-fns/locale";
 
-export function downloadArticlesAsExcel(articles: Article[], filename: string = "inventory_report.xlsx") {
-  const data = articles.map(article => ({
-    "Artikelnummer": article.articleNumber,
-    "Beskrivning": article.description,
-    "Längd": article.length,
-    "Lagerplats": article.location,
-    "Inventerat antal": article.inventoryCount ?? "",
-    "Status": article.isInventoried ? "Inventerad" : "Ej inventerad",
-    "Anteckningar": article.notes ?? "",
-  }));
+export function downloadArticlesAsExcel(
+  articles: Article[], 
+  inventoryCounts: InventoryCount[], 
+  filename: string = "inventory_report.xlsx"
+) {
+  // Create article lookup map
+  const articleMap = new Map(articles.map(a => [a.id, a]));
+  
+  // Create data rows - one per inventory count
+  const data = inventoryCounts.map(count => {
+    const article = articleMap.get(count.articleId);
+    return {
+      "Artikelnummer": article?.articleNumber ?? "",
+      "Beskrivning": article?.description ?? "",
+      "Längd": article?.length ?? "",
+      "Lagerplats": article?.location ?? "",
+      "Inventerat antal": count.count,
+      "Användare": count.userId,
+      "Datum": count.createdAt ? format(new Date(count.createdAt), "yyyy-MM-dd HH:mm", { locale: sv }) : "",
+      "Anteckningar": count.notes ?? "",
+    };
+  });
 
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Artiklar");
+  XLSX.utils.book_append_sheet(wb, ws, "Inventeringar");
   XLSX.writeFile(wb, filename);
 }
 
@@ -35,16 +49,29 @@ export function downloadOrderLinesAsExcel(orderLines: OrderLine[], filename: str
   XLSX.writeFile(wb, filename);
 }
 
-export function downloadDiscrepanciesAsExcel(articles: Article[], filename: string = "discrepancies_report.xlsx") {
-  const discrepancies = articles.filter(a => a.notes && a.notes.length > 0);
+export function downloadDiscrepanciesAsExcel(
+  articles: Article[], 
+  inventoryCounts: InventoryCount[], 
+  filename: string = "discrepancies_report.xlsx"
+) {
+  // Create article lookup map
+  const articleMap = new Map(articles.map(a => [a.id, a]));
   
-  const data = discrepancies.map(article => ({
-    "Artikelnummer": article.articleNumber,
-    "Beskrivning": article.description,
-    "Lagerplats": article.location,
-    "Inventerat antal": article.inventoryCount ?? "",
-    "Anteckningar": article.notes,
-  }));
+  // Filter inventory counts with notes (discrepancies)
+  const discrepancies = inventoryCounts.filter(count => count.notes && count.notes.length > 0);
+  
+  const data = discrepancies.map(count => {
+    const article = articleMap.get(count.articleId);
+    return {
+      "Artikelnummer": article?.articleNumber ?? "",
+      "Beskrivning": article?.description ?? "",
+      "Lagerplats": article?.location ?? "",
+      "Inventerat antal": count.count,
+      "Användare": count.userId,
+      "Datum": count.createdAt ? format(new Date(count.createdAt), "yyyy-MM-dd HH:mm", { locale: sv }) : "",
+      "Anteckningar": count.notes,
+    };
+  });
 
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
