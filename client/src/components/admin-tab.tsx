@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { User, Article, OrderLine, InventoryCount, InsertUser } from "@shared/schema";
 import { Upload, Download, Users, Activity, Lock, Trash2, Edit, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ImportModal from "./import-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,10 @@ export default function AdminTab({ user }: AdminTabProps) {
     isActive: true,
   });
   const { toast } = useToast();
+
+  useEffect(() => {
+    setIsAuthenticated(user.role === "Administratör");
+  }, [user.role]);
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],

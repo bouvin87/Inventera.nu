@@ -110,6 +110,23 @@ export function initDatabase() {
     console.error('Error during password migration:', error);
   }
   
+  // Migration: Update old roles to new roles
+  try {
+    console.log('Migrating old roles to new roles...');
+    
+    const updateLagerarbetare = sqlite.prepare("UPDATE users SET role = 'Användare' WHERE role = 'Lagerarbetare'");
+    const resultLagerarbetare = updateLagerarbetare.run();
+    
+    const updateLagerchef = sqlite.prepare("UPDATE users SET role = 'Administratör' WHERE role = 'Lagerchef'");
+    const resultLagerchef = updateLagerchef.run();
+    
+    if (resultLagerarbetare.changes > 0 || resultLagerchef.changes > 0) {
+      console.log(`Migrated ${resultLagerarbetare.changes + resultLagerchef.changes} user roles`);
+    }
+  } catch (error) {
+    console.error('Error during role migration:', error);
+  }
+  
   sqlite.close();
   console.log('Database initialized successfully!');
 }
