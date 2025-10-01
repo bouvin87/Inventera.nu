@@ -1,6 +1,6 @@
 # Overview
 
-This is a warehouse inventory management application built with React, Express, and PostgreSQL. The system enables warehouse workers to perform inventory counts, track order lines, and manage warehouse operations. It features a multi-user interface where workers can log in, count inventory, mark discrepancies, and administrators can import/export data via Excel files. Real-time updates are pushed to all connected clients through WebSocket connections.
+This is a warehouse inventory management application built with React, Express, and SQLite. The system enables warehouse workers to perform inventory counts, track order lines, and manage warehouse operations. It features a multi-user interface where workers can log in, count inventory, mark discrepancies, and administrators can import/export data via Excel files. Real-time updates are pushed to all connected clients through WebSocket connections. All data is stored locally in a database.db file for persistence.
 
 # User Preferences
 
@@ -26,7 +26,7 @@ Preferred communication style: Simple, everyday language.
 
 **Framework**: Express.js running on Node.js with TypeScript
 
-**Data Layer**: PostgreSQL database with Drizzle ORM (`DatabaseStorage` class) implementing the `IStorage` interface. Data persists between server restarts. Default users are automatically seeded on startup if not present.
+**Data Layer**: SQLite database (database.db file) with Drizzle ORM and better-sqlite3 driver (`DatabaseStorage` class) implementing the `IStorage` interface. Data persists between server restarts in local database.db file. Tables are automatically created and default users are seeded on startup if not present. Foreign key constraints are enabled for referential integrity.
 
 **API Design**: RESTful endpoints under `/api` prefix for CRUD operations on users, articles, inventory counts, and order lines
 - Inventory count endpoints: GET/POST/PATCH/DELETE on `/api/articles/:articleId/inventory` and `/api/inventory-counts/:id`
@@ -59,10 +59,12 @@ Preferred communication style: Simple, everyday language.
 
 ## External Dependencies
 
-**Database**: PostgreSQL configured through Drizzle ORM
-- Connection via `@neondatabase/serverless` driver
-- Migrations stored in `/migrations` directory
-- Schema uses UUID primary keys with `gen_random_uuid()`
+**Database**: SQLite configured through Drizzle ORM
+- Connection via `better-sqlite3` driver
+- Local file-based storage in `database.db`
+- Schema uses text-based UUIDs generated with `crypto.randomUUID()` in application layer
+- Timestamps stored as ISO strings (text) in database, converted to Date objects in application
+- Foreign key constraints enabled with `PRAGMA foreign_keys = ON`
 
 **UI Components**: Extensive use of Radix UI primitives (@radix-ui/react-*) for accessible, unstyled components
 
@@ -73,7 +75,6 @@ Preferred communication style: Simple, everyday language.
 - Zod for runtime validation
 - date-fns for date formatting
 
-**Session Management**: connect-pg-simple for PostgreSQL-backed session storage (though authentication flow not fully implemented in current codebase)
 
 **Development Tools**:
 - Replit-specific plugins for Vite (cartographer, dev-banner, runtime-error-modal)
