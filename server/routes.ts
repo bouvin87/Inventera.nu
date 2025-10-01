@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { insertArticleSchema, insertOrderLineSchema, insertUserSchema, updateArticleInventorySchema, insertInventoryCountSchema, updateInventoryCountSchema } from "@shared/schema";
 import multer from "multer";
 import { read, utils } from "xlsx";
+import bcrypt from "bcryptjs";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -33,7 +34,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Users
   app.get("/api/users", async (_req, res) => {
     const users = await storage.getUsers();
-    res.json(users);
+    const sanitizedUsers = users.map(({ password, ...user }) => user);
+    res.json(sanitizedUsers);
+  });
+
+  app.get("/api/users/:id", async (req, res) => {
+    const user = await storage.getUser(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const { password, ...sanitizedUser } = user;
+    res.json(sanitizedUser);
   });
 
   app.post("/api/users", async (req, res) => {
@@ -71,6 +82,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     broadcast({ type: "user_deleted", data: { id: req.params.id } });
     res.json({ success: true });
+  });
+
+  // Login endpoint
+  app.post("/api/login", async (req, res) => {
+    const { name, password } = req.body;
+    
+    if (!name || !password) {
+      return res.status(400).json({ message: "Name and password are required" });
+    }
+    
+    const users = await storage.getUsers();
+    const user = users.find(u => u.name === name);
+    
+    if (!user) {
+      return res.status(401).json({ message: "Invalid name or password" });
+    }
+    
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    
+    if (!passwordMatch) {
+      return res.status(401).json({ message: "Invalid name or password" });
+    }
+    
+    await storage.updateUserActivity(user.id);
+    
+    res.json({ 
+      id: user.id, 
+      name: user.name, 
+      role: user.role,
+      email: user.email,
+      isActive: user.isActive
+    });
   });
 
   // Articles

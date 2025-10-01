@@ -49,6 +49,7 @@ export default function AdminTab() {
     name: "",
     role: "Lagerarbetare",
     email: "",
+    password: "",
     isActive: true,
   });
   const { toast } = useToast();
@@ -124,7 +125,7 @@ export default function AdminTab() {
         description: "Den nya användaren har lagts till",
       });
       setShowAddUserDialog(false);
-      setUserForm({ name: "", role: "Lagerarbetare", email: "", isActive: true });
+      setUserForm({ name: "", role: "Lagerarbetare", email: "", password: "", isActive: true });
     },
     onError: () => {
       toast({
@@ -206,6 +207,7 @@ export default function AdminTab() {
       name: user.name,
       role: user.role,
       email: user.email || "",
+      password: "",
       isActive: user.isActive,
     });
     setShowEditUserDialog(true);
@@ -221,9 +223,15 @@ export default function AdminTab() {
       });
       return;
     }
+    
+    const updateData = { ...userForm };
+    if (!updateData.password || updateData.password === "") {
+      delete updateData.password;
+    }
+    
     updateUserMutation.mutate({ 
       id: selectedUser.id, 
-      data: userForm as Partial<User>
+      data: updateData as Partial<User>
     });
   };
 
@@ -458,7 +466,7 @@ export default function AdminTab() {
           </div>
           <Button
             onClick={() => {
-              setUserForm({ name: "", role: "Lagerarbetare", email: "", isActive: true });
+              setUserForm({ name: "", role: "Lagerarbetare", email: "", password: "", isActive: true });
               setShowAddUserDialog(true);
             }}
             data-testid="button-add-user"
@@ -629,6 +637,17 @@ export default function AdminTab() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="add-password">Lösenord (lämna tomt för standard: Euro2025!)</Label>
+              <Input
+                id="add-password"
+                type="password"
+                value={userForm.password}
+                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                placeholder="Ange lösenord eller lämna tomt"
+                data-testid="input-add-user-password"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="add-role">Roll</Label>
               <Select
                 value={userForm.role}
@@ -703,6 +722,17 @@ export default function AdminTab() {
                 onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
                 placeholder="namn@example.com"
                 data-testid="input-edit-user-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-password">Nytt lösenord (lämna tomt för att behålla nuvarande)</Label>
+              <Input
+                id="edit-password"
+                type="password"
+                value={userForm.password}
+                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                placeholder="Ange nytt lösenord eller lämna tomt"
+                data-testid="input-edit-user-password"
               />
             </div>
             <div className="space-y-2">

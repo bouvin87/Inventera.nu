@@ -15,6 +15,7 @@ import {
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 export interface IStorage {
   // Users
@@ -284,11 +285,15 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
+    const password = insertUser.password || 'Euro2025!';
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
     const [user] = await db
       .insert(users)
       .values({ 
         ...insertUser, 
         id,
+        password: hashedPassword,
         lastActive: new Date().toISOString() 
       })
       .returning();
@@ -296,9 +301,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const updateData = { ...updates };
+    
+    if (updates.password) {
+      updateData.password = await bcrypt.hash(updates.password, 10);
+    }
+    
     const [updated] = await db
       .update(users)
-      .set(updates)
+      .set(updateData)
       .where(eq(users.id, id))
       .returning();
     return updated || undefined;

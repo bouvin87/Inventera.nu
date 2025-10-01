@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import bcrypt from 'bcryptjs';
 
 export function initDatabase() {
   const sqlite = new Database('database.db');
@@ -12,6 +13,7 @@ export function initDatabase() {
       name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'Lagerarbetare',
       email TEXT,
+      password TEXT NOT NULL DEFAULT '',
       is_active INTEGER NOT NULL DEFAULT 1,
       last_active TEXT
     );
@@ -81,6 +83,31 @@ export function initDatabase() {
     }
   } catch (error) {
     console.error('Error during migration:', error);
+  }
+  
+  // Migration: Add password column to users if it doesn't exist and set default password
+  try {
+    const columns = sqlite.pragma('table_info(users)') as Array<{ name: string }>;
+    const hasPasswordColumn = columns.some((col) => col.name === 'password');
+    
+    if (!hasPasswordColumn) {
+      console.log('Adding password column to users table...');
+      sqlite.exec('ALTER TABLE users ADD COLUMN password TEXT NOT NULL DEFAULT "";');
+    }
+    
+    // Always ensure all users have a password (handles both new column and existing empty passwords)
+    const defaultPassword = 'Euro2025!';
+    const hashedPassword = bcrypt.hashSync(defaultPassword, 10);
+    
+    console.log('Ensuring all users have passwords...');
+    const updateStmt = sqlite.prepare("UPDATE users SET password = ? WHERE password IS NULL OR password = ''");
+    const result = updateStmt.run(hashedPassword);
+    
+    if (result.changes > 0) {
+      console.log(`Set default password for ${result.changes} users`);
+    }
+  } catch (error) {
+    console.error('Error during password migration:', error);
   }
   
   sqlite.close();

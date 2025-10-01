@@ -2,8 +2,12 @@ import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
 export async function seedDatabase() {
+  const defaultPassword = "Euro2025!";
+  const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+  
   const defaultUsers = [
     { name: "Anna Andersson", role: "Lagerarbetare", email: "anna.a@example.com", isActive: true },
     { name: "Erik Eriksson", role: "Lagerarbetare", email: "erik.e@example.com", isActive: true },
@@ -18,6 +22,7 @@ export async function seedDatabase() {
       await db.insert(users).values({
         ...user,
         id: crypto.randomUUID(),
+        password: hashedPassword,
         lastActive: new Date().toISOString()
       });
       console.log(`Created user: ${user.name}`);

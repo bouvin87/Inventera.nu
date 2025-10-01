@@ -8,6 +8,7 @@ export const users = sqliteTable("users", {
   name: text("name").notNull(),
   role: text("role").notNull().default("Lagerarbetare"),
   email: text("email"),
+  password: text("password").notNull(),
   isActive: integer("is_active", { mode: 'boolean' }).notNull().default(true),
   lastActive: text("last_active"),
 });
@@ -54,6 +55,8 @@ export const inventoryCounts = sqliteTable("inventory_counts", {
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   lastActive: true,
+}).extend({
+  password: z.string().min(1).optional(),
 });
 
 export const insertArticleSchema = createInsertSchema(articles).omit({
