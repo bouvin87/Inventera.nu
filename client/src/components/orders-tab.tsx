@@ -224,7 +224,7 @@ export default function OrdersTab({ userId }: OrdersTabProps) {
       </div>
 
       {/* Search and Filter */}
-      <div className="sticky top-[112px] z-10 bg-background pb-4 -mb-4">
+      <div className="sticky top-[112px] z-10 bg-background pb-4 mb-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
