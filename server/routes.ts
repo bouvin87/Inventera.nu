@@ -144,19 +144,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const worksheet = workbook.Sheets[sheetName];
       const data = utils.sheet_to_json(worksheet);
 
-      const articles = data.map((row: any) => ({
+      const articlesData = data.map((row: any) => ({
         articleNumber: String(row.Artikelnummer || row.articleNumber || ""),
         description: String(row.Beskrivning || row.description || ""),
         length: String(row.Längd || row.length || ""),
         location: String(row.Lagerplats || row.location || ""),
       }));
 
-      // Clear existing articles
-      await storage.deleteAllArticles();
+      // Get existing articles to check for updates vs new
+      const existingArticles = await storage.getArticles();
+      const existingMap = new Map(existingArticles.map(a => [a.articleNumber, a]));
 
-      const created = await storage.createArticles(articles);
-      broadcast({ type: "articles_imported", data: created });
-      res.json({ count: created.length, articles: created });
+      const results = [];
+      for (const articleData of articlesData) {
+        const existing = existingMap.get(articleData.articleNumber);
+        if (existing) {
+          // Update existing article
+          const updated = await storage.updateArticle(existing.id, articleData);
+          if (updated) results.push(updated);
+        } else {
+          // Create new article
+          const created = await storage.createArticle(articleData);
+          results.push(created);
+        }
+      }
+
+      broadcast({ type: "articles_imported", data: results });
+      res.json({ count: results.length, articles: results });
     } catch (error) {
       console.error("Import error:", error);
       res.status(500).json({ message: "Failed to import articles" });
@@ -272,7 +286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const worksheet = workbook.Sheets[sheetName];
       const data = utils.sheet_to_json(worksheet);
 
-      const orderLines = data.map((row: any) => ({
+      const orderLinesData = data.map((row: any) => ({
         orderNumber: String(row.Ordernummer || row.Ordernr || row.orderNumber || ""),
         articleNumber: String(row["art.nr"] || row.Artikelnummer || row.articleNumber || ""),
         description: String(row.Besk || row.Beskrivning || row.description || ""),
@@ -282,12 +296,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pickStatus: String(row.Plockstatt || row.Plockstatus || row.pickStatus || "Ej plockat"),
       }));
 
-      // Clear existing order lines
-      await storage.deleteAllOrderLines();
+      // Get existing order lines to check for updates vs new
+      const existingOrderLines = await storage.getOrderLines();
+      // Create unique key: orderNumber + articleNumber + position
+      const existingMap = new Map(
+        existingOrderLines.map(ol => [
+          `${ol.orderNumber}-${ol.articleNumber}-${ol.position || ''}`,
+          ol
+        ])
+      );
 
-      const created = await storage.createOrderLines(orderLines);
-      broadcast({ type: "order_lines_imported", data: created });
-      res.json({ count: created.length, orderLines: created });
+      const results = [];
+      for (const orderLineData of orderLinesData) {
+        const uniqueKey = `${orderLineData.orderNumber}-${orderLineData.articleNumber}-${orderLineData.position || ''}`;
+        const existing = existingMap.get(uniqueKey);
+        if (existing) {
+          // Update existing order line (preserve inventory data)
+          const updated = await storage.updateOrderLine(existing.id, {
+            description: orderLineData.description,
+            length: orderLineData.length,
+            quantity: orderLineData.quantity,
+            pickStatus: orderLineData.pickStatus,
+          });
+          if (updated) results.push(updated);
+        } else {
+          // Create new order line
+          const created = await storage.createOrderLine(orderLineData);
+          results.push(created);
+        }
+      }
+
+      broadcast({ type: "order_lines_imported", data: results });
+      res.json({ count: results.length, orderLines: results });
     } catch (error) {
       console.error("Import error:", error);
       res.status(500).json({ message: "Failed to import order lines" });
