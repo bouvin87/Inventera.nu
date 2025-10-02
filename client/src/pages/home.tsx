@@ -100,7 +100,7 @@ export default function Home({ user, onLogout }: HomeProps) {
       </header>
 
       {/* Navigation Tabs */}
-      <div className="bg-card border-b border-border">
+      <div className="bg-card border-b border-border sticky top-16 z-20">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex flex-wrap gap-1 -mb-px">
             {tabs.map((tab) => (
