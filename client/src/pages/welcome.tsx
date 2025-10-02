@@ -111,6 +111,7 @@ export default function Welcome({ onSelectUser }: WelcomeProps) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Ange ditt lösenord"
               data-testid="input-password"
+              autoComplete="password"
             />
           </div>
 

@@ -61,19 +61,31 @@ export default function Home({ user, onLogout }: HomeProps) {
                 <Clipboard className="w-6 h-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold" data-testid="text-app-title">Inventeringsapp</h1>
-                <p className="text-xs text-muted-foreground" data-testid="text-current-user">{user.name}</p>
+                <h1
+                  className="text-lg font-semibold"
+                  data-testid="text-app-title"
+                >
+                  Inventeringsapp
+                </h1>
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-testid="text-current-user"
+                >
+                  {user.name}
+                </p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-4">
               {isConnected && (
                 <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-accent/10 rounded-full">
                   <Activity className="w-4 h-4 text-accent" />
-                  <span className="text-sm font-medium text-accent-foreground">Realtid aktiv</span>
+                  <span className="text-sm font-medium text-accent-foreground">
+                    Realtid aktiv
+                  </span>
                 </div>
               )}
-              
+
               <button
                 onClick={onLogout}
                 data-testid="button-logout"
@@ -90,22 +102,20 @@ export default function Home({ user, onLogout }: HomeProps) {
       {/* Navigation Tabs */}
       <div className="bg-card border-b border-border">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex gap-1 -mb-px">
+          <nav className="flex flex-wrap gap-1 -mb-px">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 data-testid={`button-tab-${tab.id}`}
-                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab.id
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span>{tab.icon}</span>
-                  {tab.label}
-                </div>
+                <span className="shrink-0">{tab.icon}</span>
+                <span>{tab.label}</span>
               </button>
             ))}
           </nav>
